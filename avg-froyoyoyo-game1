@@ -221,48 +221,60 @@ avg-froyoyoyo-game1/index.html
                 <!-- Level Selector Cards -->
                 <div class="grid grid-cols-1 gap-4 mb-6">
                     <!-- Level 1 Card -->
-                    <button onclick="selectLevelAndStart(0)" class="doodle-button bg-amber-100 hover:bg-amber-200 p-4 rounded-xl text-left border-2 border-amber-900 flex items-center gap-4 transition">
-                        <span class="text-4xl">✏️</span>
-                        <div>
-                            <div class="font-extrabold text-amber-950 text-lg">Level 1: Tutorial</div>
-                            <div class="text-xs font-semibold text-amber-800">Learn the basics with 2 practice customers</div>
+                    <button onclick="selectLevelAndStart(0)" class="doodle-button bg-amber-100 hover:bg-amber-200 p-4 rounded-xl text-left border-2 border-amber-900 flex items-center justify-between transition">
+                        <div class="flex items-center gap-4">
+                            <span class="text-4xl">✏️</span>
+                            <div>
+                                <div class="font-extrabold text-amber-950 text-lg">Level 1: Tutorial</div>
+                                <div class="text-xs font-semibold text-amber-800">Learn the basics with 2 practice customers</div>
+                            </div>
                         </div>
+                        <div id="high-score-lvl0" class="text-xs font-bold text-amber-900 bg-amber-200 px-2.5 py-1 rounded-lg border border-amber-800 shadow-sm hidden">Best: --%</div>
                     </button>
 
                     <!-- Level 2 Card -->
-                    <button id="btn-level-2" onclick="selectLevelAndStart(1)" class="doodle-button bg-fuchsia-100 hover:bg-fuchsia-200 p-4 rounded-xl text-left border-2 border-fuchsia-900 flex items-center gap-4 transition">
-                        <span class="text-4xl">🕹️</span>
-                        <div>
-                            <div class="font-extrabold text-fuchsia-950 text-lg flex items-center gap-2">
-                                <span>Day 1: The Average Retro Shop</span>
-                                <span id="badge-lvl2" class="text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">Unlocked</span>
+                    <button id="btn-level-2" onclick="selectLevelAndStart(1)" class="doodle-button bg-fuchsia-100 hover:bg-fuchsia-200 p-4 rounded-xl text-left border-2 border-fuchsia-900 flex items-center justify-between transition">
+                        <div class="flex items-center gap-4">
+                            <span class="text-4xl">🕹️</span>
+                            <div>
+                                <div class="font-extrabold text-fuchsia-950 text-lg flex items-center gap-2">
+                                    <span>Day 1: The Average Retro Shop</span>
+                                    <span id="badge-lvl2" class="text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">Unlocked</span>
+                                </div>
+                                <div class="text-xs font-semibold text-fuchsia-800">3 retro customers • Small & Large cups • Chocolate flavor • Strawberries & Blackberries</div>
                             </div>
-                            <div class="text-xs font-semibold text-fuchsia-800">3 retro customers • Small & Large cups • Chocolate flavor • Strawberries & Blackberries</div>
                         </div>
+                        <div id="high-score-lvl1" class="text-xs font-bold text-fuchsia-950 bg-fuchsia-200 px-2.5 py-1 rounded-lg border border-fuchsia-800 shadow-sm hidden">Best: --%</div>
                     </button>
 
                     <!-- Level 3 Card -->
-                    <button id="btn-level-3" onclick="selectLevelAndStart(2)" class="doodle-button bg-emerald-100 hover:bg-emerald-200 p-4 rounded-xl text-left border-2 border-emerald-900 flex items-center gap-4 transition">
-                        <span class="text-4xl">🐶</span>
-                        <div>
-                            <div class="font-extrabold text-emerald-950 text-lg flex items-center gap-2">
-                                <span>Day 2: Dogs & Double Flavors</span>
-                                <span id="badge-lvl3" class="text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">Unlocked</span>
+                    <button id="btn-level-3" onclick="selectLevelAndStart(2)" class="doodle-button bg-emerald-100 hover:bg-emerald-200 p-4 rounded-xl text-left border-2 border-emerald-900 flex items-center justify-between transition">
+                        <div class="flex items-center gap-4">
+                            <span class="text-4xl">🐶</span>
+                            <div>
+                                <div class="font-extrabold text-emerald-950 text-lg flex items-center gap-2">
+                                    <span>Day 2: Dogs & Double Flavors</span>
+                                    <span id="badge-lvl3" class="text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">Unlocked</span>
+                                </div>
+                                <div class="text-xs font-semibold text-emerald-800">5 customers (3 Humans, 2 Dogs) • Strawberry-and-Cream unlocked!</div>
                             </div>
-                            <div class="text-xs font-semibold text-emerald-800">5 customers (3 Humans, 2 Dogs) • Strawberry-and-Cream unlocked!</div>
                         </div>
+                        <div id="high-score-lvl2" class="text-xs font-bold text-emerald-950 bg-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-800 shadow-sm hidden">Best: --%</div>
                     </button>
 
                     <!-- Level 4 Card -->
-                    <button id="btn-level-4" onclick="selectLevelAndStart(3)" class="doodle-button bg-indigo-100 hover:bg-indigo-200 p-4 rounded-xl text-left border-2 border-indigo-900 flex items-center gap-4 transition">
-                        <span class="text-4xl">🚀</span>
-                        <div>
-                            <div class="font-extrabold text-indigo-950 text-lg flex items-center gap-2">
-                                <span>Day 3: Moon Mission</span>
-                                <span id="badge-lvl4" class="text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">Unlocked</span>
+                    <button id="btn-level-4" onclick="selectLevelAndStart(3)" class="doodle-button bg-indigo-100 hover:bg-indigo-200 p-4 rounded-xl text-left border-2 border-indigo-900 flex items-center justify-between transition">
+                        <div class="flex items-center gap-4">
+                            <span class="text-4xl">🚀</span>
+                            <div>
+                                <div class="font-extrabold text-indigo-950 text-lg flex items-center gap-2">
+                                    <span>Day 3: Moon Mission</span>
+                                    <span id="badge-lvl4" class="text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">Unlocked</span>
+                                </div>
+                                <div class="text-xs font-semibold text-indigo-800">8 space customers (1 Human, 3 Dogs, 4 French Aliens) • Mooncheese flavor & space toppings!</div>
                             </div>
-                            <div class="text-xs font-semibold text-indigo-800">8 space customers (1 Human, 3 Dogs, 4 French Aliens) • Mooncheese flavor & space toppings!</div>
                         </div>
+                        <div id="high-score-lvl3" class="text-xs font-bold text-indigo-950 bg-indigo-200 px-2.5 py-1 rounded-lg border border-indigo-800 shadow-sm hidden">Best: --%</div>
                     </button>
                 </div>
 
@@ -847,8 +859,9 @@ avg-froyoyoyo-game1/index.html
         let isPouring = false;
         let pourInterval = null;
 
-        // Local Storage Saved Progress
+        // Local Storage Saved Progress & High Scores
         let unlockedLevels = [true, true, true, true]; // Default all playable per design
+        let levelHighScores = [0, 0, 0, 0];
 
         /* Initialize App on Load */
         window.addEventListener('DOMContentLoaded', () => {
@@ -864,6 +877,10 @@ avg-froyoyoyo-game1/index.html
                 if (saved) {
                     unlockedLevels = JSON.parse(saved);
                 }
+                const savedScores = localStorage.getItem('froyo_level_high_scores');
+                if (savedScores) {
+                    levelHighScores = JSON.parse(savedScores);
+                }
             } catch(e) {
                 console.log("LocalStorage not available:", e);
             }
@@ -872,16 +889,30 @@ avg-froyoyoyo-game1/index.html
         function saveProgress() {
             try {
                 localStorage.setItem('froyo_unlocked_levels', JSON.stringify(unlockedLevels));
+                localStorage.setItem('froyo_level_high_scores', JSON.stringify(levelHighScores));
             } catch(e) {}
         }
 
         function renderLevelSelectionBadges() {
-            for (let i = 1; i <= 3; i++) {
-                const badge = document.getElementById(`badge-lvl${i+1}`);
-                if (badge) {
-                    if (unlockedLevels[i]) {
-                        badge.innerText = "Unlocked";
-                        badge.className = "text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800";
+            for (let i = 0; i < 4; i++) {
+                // Render Unlocked Badges (for levels 2, 3, 4)
+                if (i > 0) {
+                    const badge = document.getElementById(`badge-lvl${i+1}`);
+                    if (badge) {
+                        if (unlockedLevels[i]) {
+                            badge.innerText = "Unlocked";
+                            badge.className = "text-xs bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800";
+                        }
+                    }
+                }
+                // Render High Score Display
+                const scoreElem = document.getElementById(`high-score-lvl${i}`);
+                if (scoreElem) {
+                    if (levelHighScores[i] > 0) {
+                        scoreElem.innerText = `Best: ${levelHighScores[i]}%`;
+                        scoreElem.classList.remove('hidden');
+                    } else {
+                        scoreElem.classList.add('hidden');
                     }
                 }
             }
@@ -890,6 +921,7 @@ avg-froyoyoyo-game1/index.html
         /* Audio Controls with Tone.js */
         let synth = null;
         let noiseSynth = null;
+        let audioContextStarted = false;
 
         function setupAudio() {
             try {
@@ -906,6 +938,18 @@ avg-froyoyoyo-game1/index.html
             } catch (e) {
                 console.log("Audio initialization delayed until user gesture");
             }
+
+            // Global user gesture listener for reliable Web Audio activation
+            const ensureAudioContext = async () => {
+                if (!audioContextStarted) {
+                    try {
+                        await Tone.start();
+                        audioContextStarted = true;
+                    } catch (e) {}
+                }
+            };
+            window.addEventListener('click', ensureAudioContext, { once: true });
+            window.addEventListener('touchstart', ensureAudioContext, { once: true });
         }
 
         function playSound(type) {
@@ -970,6 +1014,7 @@ avg-froyoyoyo-game1/index.html
             // Default back to tutorial theme for main menu
             document.getElementById('app-body').className = "theme-tutorial min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-pink-200";
             document.getElementById('level-subtitle').innerText = "Select a Level to Start";
+            renderLevelSelectionBadges();
         }
 
         function restartLevel() {
@@ -1071,7 +1116,6 @@ avg-froyoyoyo-game1/index.html
                 return;
             }
             if (playerCup.flavor && playerCup.flavor !== flavorKey) {
-                // If already poured a different flavor, clear cup or allow mix
                 playerCup.flavor = flavorKey;
             } else {
                 playerCup.flavor = flavorKey;
@@ -1283,8 +1327,8 @@ avg-froyoyoyo-game1/index.html
                 if (toppingKey === 'sprinkles' || toppingKey === 'mooncheese_sprinkles') {
                     const colors = toppingKey === 'sprinkles' ? ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#EC4899'] : ['#FACC15', '#EAB308', '#FEF08A'];
                     for (let i = 0; i < 20; i++) {
-                        const rx = centerX + (Math.random() * 70 - 35);
-                        const ry = topY + (Math.random() * 60 - 30);
+                        const rx = centerX + (Math.sin(i * 99) * 35);
+                        const ry = topY + (Math.cos(i * 33) * 30);
                         ctx.fillStyle = colors[i % colors.length];
                         ctx.fillRect(rx, ry, 8, 4);
                     }
@@ -1424,6 +1468,12 @@ avg-froyoyoyo-game1/index.html
             const maxTotalPossible = levelData.customers.length * 40;
             const earnedTotal = customerScores.reduce((sum, item) => sum + item.total, 0);
             const overallRatio = earnedTotal / maxTotalPossible;
+            const overallPercentage = Math.round(overallRatio * 100);
+
+            // High Score Persistence Update
+            if (overallPercentage > levelHighScores[currentLevelIndex]) {
+                levelHighScores[currentLevelIndex] = overallPercentage;
+            }
 
             const summaryModal = document.getElementById('view-summary');
             const winScreen = document.getElementById('summary-win');
@@ -1437,22 +1487,24 @@ avg-froyoyoyo-game1/index.html
                 winScreen.classList.remove('hidden');
                 retryScreen.classList.add('hidden');
 
-                document.getElementById('win-accuracy-percentage').innerText = `${Math.round(overallRatio * 100)}%`;
+                document.getElementById('win-accuracy-percentage').innerText = `${overallPercentage}%`;
                 document.getElementById('win-score-text').innerText = `You earned ${earnedTotal} out of ${maxTotalPossible} total points!`;
 
                 // Unlock next level in persistence
                 if (currentLevelIndex + 1 < GAME_LEVELS.length) {
                     unlockedLevels[currentLevelIndex + 1] = true;
-                    saveProgress();
-                    renderLevelSelectionBadges();
                 }
+                saveProgress();
+                renderLevelSelectionBadges();
             } else {
                 // TRY AGAIN SCREEN (Shop Dog screen)
                 playSound('retry');
                 retryScreen.classList.remove('hidden');
                 winScreen.classList.add('hidden');
 
-                document.getElementById('retry-accuracy-percentage').innerText = `${Math.round(overallRatio * 100)}%`;
+                document.getElementById('retry-accuracy-percentage').innerText = `${overallPercentage}%`;
+                saveProgress();
+                renderLevelSelectionBadges();
             }
         }
 
