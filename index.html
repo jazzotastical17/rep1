@@ -3,30 +3,275 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maya — Projects</title>
+<title>jazzotastical fantastic homepage (oyah!!)</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 640px;
-         margin: 0 auto; padding: 2.5rem 1.25rem; line-height: 1.6;
-         background: #14141a; color: #e8e8ee; }
-  h1 { font-size: 2.25rem; margin-bottom: .25rem; }
-  .tag { color: #9a9aa8; margin-top: 0; }
-  .card { display: block; padding: 1.25rem; margin-top: 1.5rem;
-          border: 1px solid #33333f; border-radius: 12px;
-          text-decoration: none; color: inherit; }
-  .card:hover { border-color: #7c6cff; background: #1c1c26; }
-  .card h2 { margin: 0 0 .35rem; font-size: 1.2rem; }
-  .card p { margin: 0; color: #9a9aa8; }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    background: #f7a8b8;
+    color: #ffffff;
+    min-height: 100vh;
+    margin: 0;
+    padding: 3rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .container {
+    max-width: 500px;
+    width: 100%;
+  }
+  h1 {
+    font-size: 2.25rem;
+    color: #ffffff;
+    margin: 0 0 1.5rem 0;
+    line-height: 1.3;
+    font-weight: bold;
+    text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  h2 {
+    font-size: 1.25rem;
+    color: #ffffff;
+    margin: 0 0 1.25rem 0;
+    font-weight: normal;
+  }
+  .button-link {
+    display: block;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background-color: #f08099;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    border: 2px solid #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+  .button-link:hover, .button-link:active {
+    background-color: #e26d87;
+    transform: translateY(-2px);
+  }
+
+  .music-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    width: 48px;
+    height: 48px;
+    background-color: #f08099;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    z-index: 1000;
+  }
+  .music-btn:hover {
+    background-color: #e26d87;
+    transform: scale(1.08);
+  }
+  .track-display {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 0.75rem 1rem;
+    background-color: #f08099;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .track-title {
+    font-weight: bold;
+  }
+  .track-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .track-btn {
+    background-color: #ffffff;
+    color: #f08099;
+    border: none;
+    border-radius: 12px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    font-weight: bold;
+    font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+  .track-btn:hover {
+    background-color: #ffe3e8;
+    transform: scale(1.05);
+  }
+  .track-select {
+    background-color: #ffffff;
+    color: #f08099;
+    border: none;
+    border-radius: 12px;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.8rem;
+    font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    outline: none;
+    max-width: 120px;
+  }
 </style>
 </head>
 <body>
 
-  <h1>jazzy</h1>
-  <p class="tag">Things I'm building.</p>
+  <div class="container">
+    <h1>jazzotastical fantastic homepage (oyah!!)</h1>
+    <h2>apps and stuffs</h2>
+    <a class="button-link" href="avg-froyoyoyo-sim/">avg froyoyoyo sim</a>
+  </div>
 
-  <a class="card" href="avg-froyoyoyo-sim/">
-    <h2>Avg Froyoyoyo Simulatory</h2>
-    <p>your average frozen yogurt factory!</p>
-  </a>
+  <!-- Audio element configured to loop continuously -->
+  <audio id="album-audio" loop preload="metadata">
+    <source src="audio.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
 
+  <!-- Mute / Play toggle button in bottom left -->
+  <button id="mute-btn" class="music-btn" title="Toggle Mute / Play Music" aria-label="Toggle Mute">🎵</button>
+
+  <!-- Current song title display & track switcher in bottom right -->
+  <div class="track-display">
+    <div id="track-title" class="track-title">🎵 WOLF</div>
+    <div class="track-controls">
+      <button id="prev-btn" class="track-btn" title="Previous Song" aria-label="Previous Song">⏮</button>
+      <select id="track-select" class="track-select" aria-label="Switch Song"></select>
+      <button id="next-btn" class="track-btn" title="Next Song" aria-label="Next Song">⏭</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const audio = document.getElementById('album-audio');
+      const muteBtn = document.getElementById('mute-btn');
+      const trackTitle = document.getElementById('track-title');
+      const trackSelect = document.getElementById('track-select');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+
+      // Album timestamp mapping (in seconds)
+      const tracks = [
+        { time: 0, name: "WOLF" },
+        { time: 110, name: "Jamba" },
+        { time: 322, name: "Cowboy" },
+        { time: 517, name: "Awkward" },
+        { time: 744, name: "Domo" },
+        { time: 903, name: "Answer" },
+        { time: 1132, name: "Slater" },
+        { time: 1366, name: "Colossus" },
+        { time: 1826, name: "PartyIsntOver/Campfire/Bimmer" },
+        { time: 2264, name: "IFHY" },
+        { time: 2584, name: "Pigs" },
+        { time: 2838, name: "Parking Lot" },
+        { time: 3073, name: "Rusty" },
+        { time: 3382, name: "Trashwang" },
+        { time: 3663, name: "Treehome95" },
+        { time: 3842, name: "Tamale" },
+        { time: 4009, name: "Lone" }
+      ];
+
+      // Populate track selection options
+      tracks.forEach((track, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = track.name;
+        trackSelect.appendChild(option);
+      });
+
+      // Find index of track currently playing
+      function getCurrentTrackIndex() {
+        const curTime = audio.currentTime || 0;
+        let index = 0;
+        for (let i = 0; i < tracks.length; i++) {
+          if (curTime >= tracks[i].time) {
+            index = i;
+          } else {
+            break;
+          }
+        }
+        return index;
+      }
+
+      // Update track title and dropdown selection
+      function updateTrack() {
+        const index = getCurrentTrackIndex();
+        trackTitle.textContent = '🎵 ' + tracks[index].name;
+        trackSelect.value = index;
+      }
+
+      // Jump to a target track index
+      function goToTrack(index) {
+        if (index >= 0 && index < tracks.length) {
+          audio.currentTime = tracks[index].time;
+          if (audio.paused) {
+            audio.play().catch(e => console.log("Audio playback waiting for user interaction:", e));
+            audio.muted = false;
+            muteBtn.textContent = '🎵';
+          }
+          updateTrack();
+        }
+      }
+
+      // Dropdown selection change event
+      trackSelect.addEventListener('change', function() {
+        goToTrack(parseInt(this.value, 10));
+      });
+
+      // Previous button event
+      prevBtn.addEventListener('click', function() {
+        const currentIndex = getCurrentTrackIndex();
+        const targetIndex = currentIndex > 0 ? currentIndex - 1 : tracks.length - 1;
+        goToTrack(targetIndex);
+      });
+
+      // Next button event
+      nextBtn.addEventListener('click', function() {
+        const currentIndex = getCurrentTrackIndex();
+        const targetIndex = (currentIndex + 1) % tracks.length;
+        goToTrack(targetIndex);
+      });
+
+      // Mute / Play button interaction listener
+      muteBtn.addEventListener('click', function() {
+        if (audio.paused) {
+          audio.play().catch(function(e) {
+            console.log("Audio playback waiting for user interaction:", e);
+          });
+          audio.muted = false;
+          muteBtn.textContent = '🎵';
+        } else {
+          audio.muted = !audio.muted;
+          muteBtn.textContent = audio.muted ? '🔇' : '🎵';
+        }
+      });
+
+      audio.addEventListener('timeupdate', updateTrack);
+    })();
+  </script>
 </body>
 </html>
