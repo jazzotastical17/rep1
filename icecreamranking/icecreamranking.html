@@ -199,7 +199,7 @@
       </div>
       <h3 class="text-lg font-bold text-slate-900">Hold up!</h3>
       <p id="empty-modal-text" class="text-sm font-medium text-pink-600 bg-pink-50 p-4 rounded-xl border border-pink-200 italic">
-        <!-- Awkward message -->
+        <!-- Message filled dynamically -->
       </p>
       <button onclick="closeModal()" class="w-full py-2.5 bg-pink-100 hover:bg-pink-200 text-pink-800 font-semibold text-sm rounded-xl transition-colors">
         Got it
@@ -208,11 +208,13 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // Awkward Case Rotating Messages
+    const SUPABASE_URL = "https://lnsdcoyajmydieizdxbc.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_83IKFYoUoWALYkiKSvpPng_vYGsOprP";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const EMPTY_FEED_MESSAGES = [
       "no reviews yet. how about you make history",
       "helloooo? is the mic on in here..?",
@@ -225,67 +227,51 @@
       "you must be fun at parties"
     ];
 
-    // State Variables
     let reviews = [];
     let selectedRating = 5;
     let selectedFeaturedIndex = null;
     let emptyMessageIndex = Math.floor(Math.random() * EMPTY_FEED_MESSAGES.length);
-    let db = null;
-    let auth = null;
-    let currentUser = null;
-
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'ice-cream-ranker-v1';
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 
     async function initDatabase() {
-      if (!firebaseConfig) {
-        console.warn("No Firebase config provided. Operating in local memory mode.");
-        renderAll();
-        return;
-      }
+      await fetchReviews();
+      setupRealtimeSync();
+    }
 
+    async function fetchReviews() {
       try {
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
+        const { data, error } = await supabase
+          .from('reviews')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        if (error) throw error;
 
-        onAuthStateChanged(auth, (user) => {
-          currentUser = user;
-          if (user) {
-            setupRealtimeSync();
-          }
-        });
+        reviews = (data || []).map(r => ({
+          ...r,
+          added_at: r.created_at,
+          star_rating: typeof r.star_rating === 'number' 
+            ? r.star_rating 
+            : (parseInt(r.star_rating) || 5)
+        }));
+        
+        renderAll();
       } catch (err) {
-        console.error("Firebase Auth / Init Error:", err);
+        console.error("Supabase Fetch Error:", err);
       }
     }
 
     function setupRealtimeSync() {
-      if (!db || !currentUser) return;
-      const reviewsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reviews');
-
-      onSnapshot(reviewsRef, (snapshot) => {
-        reviews = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          reviews.push({ 
-            id: doc.id, 
-            ...data,
-            upvotes: typeof data.upvotes === 'number' ? data.upvotes : 0,
-            downvotes: typeof data.downvotes === 'number' ? data.downvotes : 0
-          });
-        });
-        renderAll();
-      }, (error) => {
-        console.error("Firestore Error:", error);
-      });
+      supabase
+        .channel('public:reviews')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
+          fetchReviews();
+        })
+        .subscribe();
     }
+
+    window.closeModal = function() {
+      document.getElementById('empty-modal').classList.add('hidden');
+    };
 
     window.handleFormSubmit = async function(event) {
       event.preventDefault();
@@ -294,7 +280,7 @@
       const flavorInput = document.getElementById('input-flavor').value.trim();
       const reviewTextInput = document.getElementById('input-review').value.trim();
 
-      // Awkward Case: Empty Submit Validation
+      // Empty Submit Validation
       if (!reviewerInput || !flavorInput || !reviewTextInput) {
         const randomMsg = EMPTY_SUBMIT_MESSAGES[Math.floor(Math.random() * EMPTY_SUBMIT_MESSAGES.length)];
         document.getElementById('empty-modal-text').innerText = `"${randomMsg}"`;
@@ -302,31 +288,28 @@
         return;
       }
 
+      // Convert star rating number to exact constraint schema format: 'X star(s)'
+      const ratingString = `${selectedRating} star${selectedRating > 1 ? 's' : ''}`;
+
       const newReview = {
         reviewer_name: reviewerInput,
         flavor_name: flavorInput,
-        star_rating: selectedRating,
+        star_rating: ratingString,
         review_text: reviewTextInput.substring(0, 450), // Hard limit
         upvotes: 0,
-        downvotes: 0,
-        added_at: new Date().toISOString()
+        downvotes: 0
       };
 
       const submitBtn = document.getElementById('submit-btn');
       submitBtn.disabled = true;
       submitBtn.innerText = "Posting...";
 
-      if (db && currentUser) {
-        try {
-          const reviewsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reviews');
-          await addDoc(reviewsRef, newReview);
-        } catch (err) {
-          console.error("Failed to save review:", err);
-        }
-      } else {
-        // Fallback for offline mode
-        reviews.unshift({ id: Date.now().toString(), ...newReview });
-        renderAll();
+      try {
+        const { error } = await supabase.from('reviews').insert([newReview]);
+        if (error) throw error;
+        await fetchReviews();
+      } catch (err) {
+        console.error("Failed to save review to Supabase:", err);
       }
 
       // Reset Form & Return to Looking View
@@ -341,25 +324,32 @@
     window.voteReview = async function(reviewId, type) {
       if (!reviewId) return;
 
-      if (db && currentUser) {
-        try {
-          const reviewDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'reviews', reviewId);
-          if (type === 'up') {
-            await updateDoc(reviewDocRef, { upvotes: increment(1) });
-          } else if (type === 'down') {
-            await updateDoc(reviewDocRef, { downvotes: increment(1) });
-          }
-        } catch (err) {
-          console.error("Failed to record vote:", err);
+      const target = reviews.find(r => r.id === reviewId || r.id == reviewId);
+      if (!target) return;
+
+      const currentUp = target.upvotes || 0;
+      const currentDown = target.downvotes || 0;
+      const updates = type === 'up' 
+        ? { upvotes: currentUp + 1 } 
+        : { downvotes: currentDown + 1 };
+
+      // Optimistic local update
+      if (type === 'up') target.upvotes = currentUp + 1;
+      if (type === 'down') target.downvotes = currentDown + 1;
+      renderAll();
+
+      try {
+        const { error } = await supabase
+          .from('reviews')
+          .update(updates)
+          .eq('id', reviewId);
+
+        if (error) {
+          console.error("Failed to vote:", error);
+          await fetchReviews();
         }
-      } else {
-        // Local state fallback
-        const rev = reviews.find(r => r.id === reviewId);
-        if (rev) {
-          if (type === 'up') rev.upvotes = (rev.upvotes || 0) + 1;
-          if (type === 'down') rev.downvotes = (rev.downvotes || 0) + 1;
-          renderAll();
-        }
+      } catch (err) {
+        console.error("Vote Error:", err);
       }
     };
 
@@ -372,7 +362,6 @@
     function getProcessedReviews() {
       let list = [...reviews];
       
-      // Live Keyword/Flavor/Reviewer Search Filter
       const searchInput = document.getElementById('search-input');
       const searchQuery = searchInput ? searchInput.value.trim().toLowerCase() : '';
       const clearBtn = document.getElementById('search-clear-btn');
@@ -411,7 +400,7 @@
         list.sort((a, b) => a.star_rating - b.star_rating);
       }
 
-      // Awkward Case: De-prioritize rows beyond 250
+      // De-prioritize rows beyond 250
       if (list.length > 250) {
         const topPart = list.slice(0, 250);
         const deprioritized = list.slice(250);
@@ -425,7 +414,7 @@
       const searchInput = document.getElementById('search-input');
       if (searchInput) {
         searchInput.value = '';
-        applyFilters();
+        window.applyFilters();
       }
     };
 
@@ -530,7 +519,6 @@
         return;
       }
 
-      // Group by flavor and calculate averages
       const flavorStats = {};
       reviews.forEach(r => {
         const key = r.flavor_name.trim().toLowerCase();
@@ -648,10 +636,6 @@
       renderFeed();
     };
 
-    window.closeModal = function() {
-      document.getElementById('empty-modal').classList.add('hidden');
-    };
-
     function formatDate(isoStr) {
       if (!isoStr) return '';
       try {
@@ -673,10 +657,10 @@
       })[m]);
     }
 
-    window.onload = function() {
+    window.addEventListener('DOMContentLoaded', () => {
       window.setRating(5);
       initDatabase();
-    };
+    });
   </script>
 </body>
 </html>
