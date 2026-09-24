@@ -216,20 +216,44 @@
   </div>
 
   <script type="module">
-    import { createClient } from '@supabase/supabase-js'
+    const supabaseUrl = 'YOUR_SUPABASE_URL_HERE';
+    const supabaseAnonKey = 'YOUR_ANON_KEY_HERE';
 
-    const supabaseUrl = 'YOUR_SUPABASE_URL_HERE'
-    const supabaseAnonKey = 'YOUR_ANON_KEY_HERE'
-
-    // Safe initialization guard to prevent script crash on placeholder or invalid URLs
     let supabase = null;
-    try {
-      if (supabaseUrl && supabaseUrl.startsWith('http') && !supabaseUrl.includes('YOUR_SUPABASE_URL')) {
-        supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Default sample data so the app displays vibrant content right away
+    const INITIAL_SAMPLE_REVIEWS = [
+      {
+        id: 'sample-1',
+        reviewer_name: 'Sophia L.',
+        flavor_name: 'Mint Chocolate Chip',
+        star_rating: 5,
+        review_text: 'Super refreshing mint flavor with generous dark chocolate chunks. Perfectly balanced sweetness and creamy texture!',
+        upvotes: 14,
+        downvotes: 1,
+        added_at: new Date(Date.now() - 86400000 * 2).toISOString()
+      },
+      {
+        id: 'sample-2',
+        reviewer_name: 'Marcus K.',
+        flavor_name: 'Salted Caramel Crunch',
+        star_rating: 4,
+        review_text: 'Rich caramel ribbon with crispy butter waffle bits. A bit heavy, but incredible indulgence.',
+        upvotes: 9,
+        downvotes: 0,
+        added_at: new Date(Date.now() - 86400000 * 4).toISOString()
+      },
+      {
+        id: 'sample-3',
+        reviewer_name: 'Elena R.',
+        flavor_name: 'Wild Berry Sorbet',
+        star_rating: 5,
+        review_text: 'Dairy-free perfection! Vibrant raspberry and blackberry notes with genuine fruit tartness.',
+        upvotes: 18,
+        downvotes: 2,
+        added_at: new Date(Date.now() - 86400000 * 1).toISOString()
       }
-    } catch (e) {
-      console.warn("Supabase client initialization skipped/failed:", e);
-    }
+    ];
 
     const EMPTY_FEED_MESSAGES = [
       "no reviews yet. how about you make history",
@@ -249,6 +273,16 @@
     let emptyMessageIndex = Math.floor(Math.random() * EMPTY_FEED_MESSAGES.length);
 
     async function initDatabase() {
+      // Attempt dynamic load of Supabase so script failure doesn't block local features
+      if (supabaseUrl && supabaseUrl.startsWith('http') && !supabaseUrl.includes('YOUR_SUPABASE_URL')) {
+        try {
+          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+          supabase = createClient(supabaseUrl, supabaseAnonKey);
+        } catch (e) {
+          console.warn("Supabase load bypassed:", e);
+        }
+      }
+
       await fetchReviews();
       setupRealtimeSync();
     }
@@ -256,7 +290,6 @@
     async function fetchReviews() {
       try {
         if (supabase) {
-          // Race query with a 3-second timeout so the UI never hangs on bad connections
           const fetchPromise = supabase
             .from('reviews')
             .select('*')
@@ -270,18 +303,26 @@
 
           if (error) throw error;
 
-          reviews = (data || []).map(r => ({
-            ...r,
-            added_at: r.created_at,
-            star_rating: parseRatingNumber(r.star_rating)
-          }));
+          if (data && data.length > 0) {
+            reviews = data.map(r => ({
+              ...r,
+              added_at: r.created_at,
+              star_rating: parseRatingNumber(r.star_rating)
+            }));
+          }
         }
       } catch (err) {
         console.warn("Supabase fetch notice:", err.message);
       }
 
-      // Merge with locally saved reviews so user submissions are never lost
-      const localReviews = JSON.parse(localStorage.getItem('local_ice_cream_reviews') || '[]');
+      let localReviews = JSON.parse(localStorage.getItem('local_ice_cream_reviews') || 'null');
+      
+      // Seed initial sample reviews if local storage is uninitialized
+      if (localReviews === null) {
+        localReviews = INITIAL_SAMPLE_REVIEWS;
+        localStorage.setItem('local_ice_cream_reviews', JSON.stringify(localReviews));
+      }
+
       const existingIds = new Set(reviews.map(r => String(r.id)));
       localReviews.forEach(lr => {
         if (!existingIds.has(String(lr.id))) {
@@ -324,7 +365,6 @@
       const flavorInput = document.getElementById('input-flavor').value.trim();
       const reviewTextInput = document.getElementById('input-review').value.trim();
 
-      // Empty Submit Validation
       if (!reviewerInput || !flavorInput || !reviewTextInput) {
         const randomMsg = EMPTY_SUBMIT_MESSAGES[Math.floor(Math.random() * EMPTY_SUBMIT_MESSAGES.length)];
         document.getElementById('empty-modal-text').innerText = `"${randomMsg}"`;
@@ -347,7 +387,6 @@
       submitBtn.disabled = true;
       submitBtn.innerText = "Posting...";
 
-      // Guaranteed local storage save so submission succeeds immediately
       const localReview = {
         id: 'local-' + Date.now(),
         ...newReview,
@@ -387,7 +426,6 @@
         renderAll();
       }
 
-      // Reset Form & Return to Feed
       document.getElementById('review-form').reset();
       window.setRating(5);
       window.updateCharCount();
@@ -410,10 +448,20 @@
 
       if (type === 'up') target.upvotes = currentUp + 1;
       if (type === 'down') target.downvotes = currentDown + 1;
+      
+      // Update local storage copy
+      const localReviews = JSON.parse(localStorage.getItem('local_ice_cream_reviews') || '[]');
+      const locTarget = localReviews.find(r => r.id === reviewId || r.id == reviewId);
+      if (locTarget) {
+        if (type === 'up') locTarget.upvotes = (locTarget.upvotes || 0) + 1;
+        if (type === 'down') locTarget.downvotes = (locTarget.downvotes || 0) + 1;
+        localStorage.setItem('local_ice_cream_reviews', JSON.stringify(localReviews));
+      }
+
       renderAll();
 
       try {
-        if (!String(reviewId).startsWith('local-')) {
+        if (supabase && !String(reviewId).startsWith('local-') && !String(reviewId).startsWith('sample-')) {
           await supabase.from('reviews').update(updates).eq('id', reviewId);
         }
       } catch (err) {
