@@ -8,6 +8,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Import map for bare module imports in browser -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"
+    }
+  }
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body {
@@ -208,18 +216,12 @@
   </div>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { createClient } from '@supabase/supabase-js'
 
- import { createClient } from '@supabase/supabase-js'
+    const supabaseUrl = 'YOUR_SUPABASE_URL_HERE'
+    const supabaseAnonKey = 'YOUR_ANON_KEY_HERE'
 
-const supabaseUrl = 'YOUR_SUPABASE_URL_HERE'
-const supabaseAnonKey = 'YOUR_ANON_KEY_HERE'
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-    const SUPABASE_URL = "https://lnsdcoyajmydieizdxbc.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_83IKFYoUoWALYkiKSvpPng_vYGsOprP";
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
     const EMPTY_FEED_MESSAGES = [
       "no reviews yet. how about you make history",
