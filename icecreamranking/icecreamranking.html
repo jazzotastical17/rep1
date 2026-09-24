@@ -19,7 +19,7 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
   </style>
 </head>
@@ -220,8 +220,26 @@
     const supabaseAnonKey = 'YOUR_ANON_KEY_HERE';
 
     let supabase = null;
+    window.__memoryStore = window.__memoryStore || {};
 
-    // Default sample data so the app displays vibrant content right away
+    // Safe localStorage wrapper to prevent crashes in sandboxed iframes
+    function getSafeStorage(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        return window.__memoryStore[key] || null;
+      }
+    }
+
+    function setSafeStorage(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        window.__memoryStore[key] = value;
+      }
+    }
+
+    // Default sample data so the app displays vibrant content immediately
     const INITIAL_SAMPLE_REVIEWS = [
       {
         id: 'sample-1',
@@ -273,18 +291,40 @@
     let emptyMessageIndex = Math.floor(Math.random() * EMPTY_FEED_MESSAGES.length);
 
     async function initDatabase() {
-      // Attempt dynamic load of Supabase so script failure doesn't block local features
+      // Synchronously load local data first so page renders instantly
+      loadLocalDataSync();
+
+      // Attempt dynamic load of Supabase only if valid configuration exists
       if (supabaseUrl && supabaseUrl.startsWith('http') && !supabaseUrl.includes('YOUR_SUPABASE_URL')) {
         try {
           const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
           supabase = createClient(supabaseUrl, supabaseAnonKey);
+          await fetchReviews();
+          setupRealtimeSync();
         } catch (e) {
           console.warn("Supabase load bypassed:", e);
         }
       }
+    }
 
-      await fetchReviews();
-      setupRealtimeSync();
+    function loadLocalDataSync() {
+      let rawLocal = getSafeStorage('local_ice_cream_reviews');
+      let localReviews = null;
+      
+      try {
+        localReviews = rawLocal ? JSON.parse(rawLocal) : null;
+      } catch (e) {
+        localReviews = null;
+      }
+
+      // Seed initial sample reviews if uninitialized
+      if (localReviews === null) {
+        localReviews = INITIAL_SAMPLE_REVIEWS;
+        setSafeStorage('local_ice_cream_reviews', JSON.stringify(localReviews));
+      }
+
+      reviews = [...localReviews];
+      renderAll();
     }
 
     async function fetchReviews() {
@@ -296,7 +336,7 @@
             .order('created_at', { ascending: false });
 
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Fetch timeout')), 3000)
+            setTimeout(() => reject(new Error('Fetch timeout')), 2500)
           );
 
           const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
@@ -304,33 +344,26 @@
           if (error) throw error;
 
           if (data && data.length > 0) {
-            reviews = data.map(r => ({
+            const remoteReviews = data.map(r => ({
               ...r,
               added_at: r.created_at,
               star_rating: parseRatingNumber(r.star_rating)
             }));
+
+            // Merge with local items
+            const existingIds = new Set(remoteReviews.map(r => String(r.id)));
+            reviews.forEach(lr => {
+              if (!existingIds.has(String(lr.id))) {
+                remoteReviews.unshift(lr);
+              }
+            });
+            reviews = remoteReviews;
+            renderAll();
           }
         }
       } catch (err) {
-        console.warn("Supabase fetch notice:", err.message);
+        console.warn("Supabase sync notice:", err.message);
       }
-
-      let localReviews = JSON.parse(localStorage.getItem('local_ice_cream_reviews') || 'null');
-      
-      // Seed initial sample reviews if local storage is uninitialized
-      if (localReviews === null) {
-        localReviews = INITIAL_SAMPLE_REVIEWS;
-        localStorage.setItem('local_ice_cream_reviews', JSON.stringify(localReviews));
-      }
-
-      const existingIds = new Set(reviews.map(r => String(r.id)));
-      localReviews.forEach(lr => {
-        if (!existingIds.has(String(lr.id))) {
-          reviews.unshift(lr);
-        }
-      });
-
-      renderAll();
     }
 
     function parseRatingNumber(ratingVal) {
@@ -394,37 +427,34 @@
         star_rating: selectedRating
       };
       
-      const localReviews = JSON.parse(localStorage.getItem('local_ice_cream_reviews') || '[]');
-      localReviews.unshift(localReview);
-      localStorage.setItem('local_ice_cream_reviews', JSON.stringify(localReviews));
+      let localReviews = [];
+      try {
+        localReviews = JSON.parse(getSafeStorage('local_ice_cream_reviews') || '[]');
+      } catch (e) {
+        localReviews = [];
+      }
 
-      let savedToCloud = false;
+      localReviews.unshift(localReview);
+      setSafeStorage('local_ice_cream_reviews', JSON.stringify(localReviews));
 
       if (supabase) {
         try {
           const insertPromise = supabase.from('reviews').insert([newReview]);
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Insert timeout')), 2500)
+            setTimeout(() => reject(new Error('Insert timeout')), 2000)
           );
 
-          const { error } = await Promise.race([insertPromise, timeoutPromise]);
-          if (!error) {
-            savedToCloud = true;
-          }
+          await Promise.race([insertPromise, timeoutPromise]);
         } catch (err) {
           console.warn("Cloud insert fallback to local storage:", err.message);
         }
       }
 
-      if (savedToCloud) {
-        await fetchReviews();
-      } else {
-        const exists = reviews.some(r => r.id === localReview.id);
-        if (!exists) {
-          reviews.unshift(localReview);
-        }
-        renderAll();
+      const exists = reviews.some(r => r.id === localReview.id);
+      if (!exists) {
+        reviews.unshift(localReview);
       }
+      renderAll();
 
       document.getElementById('review-form').reset();
       window.setRating(5);
@@ -449,13 +479,17 @@
       if (type === 'up') target.upvotes = currentUp + 1;
       if (type === 'down') target.downvotes = currentDown + 1;
       
-      // Update local storage copy
-      const localReviews = JSON.parse(localStorage.getItem('local_ice_cream_reviews') || '[]');
-      const locTarget = localReviews.find(r => r.id === reviewId || r.id == reviewId);
-      if (locTarget) {
-        if (type === 'up') locTarget.upvotes = (locTarget.upvotes || 0) + 1;
-        if (type === 'down') locTarget.downvotes = (locTarget.downvotes || 0) + 1;
-        localStorage.setItem('local_ice_cream_reviews', JSON.stringify(localReviews));
+      // Update local storage copy safely
+      try {
+        const localReviews = JSON.parse(getSafeStorage('local_ice_cream_reviews') || '[]');
+        const locTarget = localReviews.find(r => r.id === reviewId || r.id == reviewId);
+        if (locTarget) {
+          if (type === 'up') locTarget.upvotes = (locTarget.upvotes || 0) + 1;
+          if (type === 'down') locTarget.downvotes = (locTarget.downvotes || 0) + 1;
+          setSafeStorage('local_ice_cream_reviews', JSON.stringify(localReviews));
+        }
+      } catch (e) {
+        console.warn("Vote storage sync failed:", e);
       }
 
       renderAll();
@@ -570,7 +604,7 @@
                 title="Upvote" 
                 class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors active:scale-90"
               >
-                <i class="fa-solid fa-chevron-up text-sm"></i>
+                <i class="fa-solid fa-chevron-up text-sm">▲</i>
               </button>
               
               <span class="text-xs font-black my-0.5 ${scoreColor}">
@@ -582,7 +616,7 @@
                 title="Downvote" 
                 class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors active:scale-90"
               >
-                <i class="fa-solid fa-chevron-down text-sm"></i>
+                <i class="fa-solid fa-chevron-down text-sm">▼</i>
               </button>
             </div>
 
@@ -609,6 +643,8 @@
     function renderSmithAnalytics() {
       const titleEl = document.getElementById('smith-recommendation-title');
       const descEl = document.getElementById('smith-recommendation-desc');
+
+      if (!titleEl || !descEl) return;
 
       if (reviews.length === 0) {
         titleEl.innerText = "No sales data yet for Mr. Smith";
@@ -645,6 +681,8 @@
 
     function renderFeatured() {
       const container = document.getElementById('featured-review-container');
+
+      if (!container) return;
 
       if (reviews.length === 0) {
         container.innerHTML = `
