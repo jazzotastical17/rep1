@@ -1,5 +1,5 @@
 // FocusCraft Supabase Configuration
-const SUPABASE_URL = "https://yvvtvzgheuirhdxzoihh.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://yvvtvzgheuirhdxzoihh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_KJD1_7c4r8eF3MvIT5h5Dw_UUeqdNEE";
 
 let supabaseClient;

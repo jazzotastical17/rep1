@@ -155,7 +155,9 @@ function setupEventListeners() {
 
   // Navigation Bar Actions
   document.getElementById("sign-out-btn").addEventListener("click", () => supabaseClient.auth.signOut());
-  document.getElementById("nav-dashboard-btn").addEventListener("click", () => showScreen(dashboardScreen));
+  document.querySelectorAll("#nav-dashboard-btn").forEach(btn => {
+    btn.addEventListener("click", () => showScreen(dashboardScreen));
+  });
   document.getElementById("nav-archive-btn").addEventListener("click", () => {
     loadArchiveTasks();
     showScreen(archiveScreen);
@@ -250,137 +252,4 @@ async function handleUserPostLogin() {
 
   const { data: profile } = await supabaseClient
     .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .maybeSingle();
-
-  if (!profile || !profile.username) {
-    showScreen(usernameScreen);
-  } else {
-    currentProfile = profile;
-    userDisplayName.textContent = profile.username;
-    await initializeDashboard();
-  }
-}
-
-async function initializeDashboard() {
-  await loadUserSettings();
-  await loadTasks();
-  showScreen(dashboardScreen);
-}
-
-// Settings & Background Uploads
-async function loadUserSettings() {
-  const { data } = await supabaseClient
-    .from("user_settings")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .maybeSingle();
-
-  if (data) {
-    userSettings = data;
-    themeSelect.value = data.selected_theme || "default";
-    fontSelect.value = data.selected_font || "Segoe UI";
-    applySettings();
-  }
-}
-
-async function saveSettings() {
-  const updatedSettings = {
-    user_id: currentUser.id,
-    selected_theme: themeSelect.value,
-    selected_font: fontSelect.value,
-    background_image_url: userSettings?.background_image_url || null
-  };
-
-  const { error } = await supabaseClient
-    .from("user_settings")
-    .upsert(updatedSettings, { onConflict: "user_id" });
-
-  if (!error) {
-    userSettings = updatedSettings;
-    applySettings();
-  }
-}
-
-function applySettings() {
-  if (!userSettings) return;
-  document.body.style.fontFamily = userSettings.selected_font || "Segoe UI";
-  if (userSettings.background_image_url) {
-    document.body.style.backgroundImage = `url('${userSettings.background_image_url}')`;
-  }
-  
-  // Theme styling
-  const themes = {
-    default: "#4f46e5",
-    emerald: "#059669",
-    sunset: "#ea580c",
-    purple: "#7c3aed"
-  };
-  document.documentElement.style.setProperty("--primary-color", themes[userSettings.selected_theme] || themes.default);
-}
-
-async function handleBackgroundUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  if (file.size > 5 * 1024 * 1024) {
-    alert("File size exceeds 5MB limit.");
-    return;
-  }
-
-  const filePath = `\({currentUser.id}/\){Date.now()}_${file.name}`;
-  const { error: uploadError } = await supabaseClient.storage
-    .from("decorations")
-    .upload(filePath, file);
-
-  if (uploadError) {
-    alert("Upload failed: " + uploadError.message);
-    return;
-  }
-
-  const { data: { publicUrl } } = supabaseClient.storage
-    .from("decorations")
-    .getPublicUrl(filePath);
-
-  userSettings = { ...(userSettings || {}), background_image_url: publicUrl };
-  await saveSettings();
-}
-
-// Tasks Data Operations
-async function loadTasks() {
-  const { data, error } = await supabaseClient
-    .from("tasks")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .eq("is_completed", false);
-
-  if (!error) {
-    activeTasks = data || [];
-    renderTasks();
-  }
-}
-
-function renderTasks() {
-  let tasks = [...activeTasks];
-
-  // Apply Priority Filter
-  const priorityVal = filterPriority.value;
-  if (priorityVal !== "all") {
-    tasks = tasks.filter(t => t.priority === priorityVal);
-  }
-
-  // Apply Sorting
-  const sortVal = sortBy.value;
-  tasks.sort((a, b) => {
-    if (a.is_pinned !== b.is_pinned) return b.is_pinned - a.is_pinned; // Pinned first
-    if (sortVal === "due_asc") return new Date(a.due_date) - new Date(b.due_date);
-    if (sortVal === "due_desc") return new Date(b.due_date) - new Date(a.due_date);
-    if (sortVal === "priority") {
-      const priorityWeights = { High: 3, Medium: 2, Low: 1 };
-      return priorityWeights[b.priority] - priorityWeights[a.priority];
-    }
-    return 0;
-  });
-
-  tasksContainer.innerHTML = tasks.length === 0 ? "
+    .select("*
