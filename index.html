@@ -52,6 +52,7 @@
     border-radius: 16px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transition: transform 0.15s ease, background-color 0.15s ease;
+    margin-bottom: 0.8rem;
   }
   .button-link:hover, .button-link:active {
     background-color: #e26d87;
@@ -145,19 +146,16 @@
     <h2>apps and stuffs</h2>
     <a class="button-link" href="froyo/index.html">Avg froyoyoyo sim</a>
     <a class="button-link" href="icecreamranking/icecreamranking.html">ice cream ranker yoyo</a>
-
+    <a class="button-link" href="focuscraft/index.html">focuscraft yoyo</a>
   </div>
 
-  <!-- Audio element configured to loop continuously -->
   <audio id="album-audio" loop preload="metadata">
     <source src="audio.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
-  <!-- Mute / Play toggle button in bottom left -->
   <button id="mute-btn" class="music-btn" title="Toggle Mute / Play Music" aria-label="Toggle Mute">🎵</button>
 
-  <!-- Current song title display & track switcher in bottom right -->
   <div class="track-display">
     <div id="track-title" class="track-title">🎵 WOLF</div>
     <div class="track-controls">
@@ -176,7 +174,6 @@
       const prevBtn = document.getElementById('prev-btn');
       const nextBtn = document.getElementById('next-btn');
 
-      // Album timestamp mapping (in seconds)
       const tracks = [
         { time: 0, name: "WOLF" },
         { time: 110, name: "Jamba" },
@@ -197,7 +194,6 @@
         { time: 4009, name: "Lone" }
       ];
 
-      // Populate track selection options
       tracks.forEach((track, index) => {
         const option = document.createElement('option');
         option.value = index;
@@ -205,7 +201,6 @@
         trackSelect.appendChild(option);
       });
 
-      // Find index of track currently playing
       function getCurrentTrackIndex() {
         const curTime = audio.currentTime || 0;
         let index = 0;
@@ -219,14 +214,12 @@
         return index;
       }
 
-      // Update track title and dropdown selection
       function updateTrack() {
         const index = getCurrentTrackIndex();
         trackTitle.textContent = '🎵 ' + tracks[index].name;
         trackSelect.value = index;
       }
 
-      // Jump to a target track index
       function goToTrack(index) {
         if (index >= 0 && index < tracks.length) {
           audio.currentTime = tracks[index].time;
@@ -239,26 +232,22 @@
         }
       }
 
-      // Dropdown selection change event
       trackSelect.addEventListener('change', function() {
         goToTrack(parseInt(this.value, 10));
       });
 
-      // Previous button event
       prevBtn.addEventListener('click', function() {
         const currentIndex = getCurrentTrackIndex();
         const targetIndex = currentIndex > 0 ? currentIndex - 1 : tracks.length - 1;
         goToTrack(targetIndex);
       });
 
-      // Next button event
       nextBtn.addEventListener('click', function() {
         const currentIndex = getCurrentTrackIndex();
         const targetIndex = (currentIndex + 1) % tracks.length;
         goToTrack(targetIndex);
       });
 
-      // Mute / Play button interaction listener
       muteBtn.addEventListener('click', function() {
         if (audio.paused) {
           audio.play().catch(function(e) {
