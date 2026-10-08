@@ -27,11 +27,14 @@ try {
       select: () => ({
         eq: () => ({
           maybeSingle: async () => ({ data: null }),
-          eq: async () => ({ data: [], error: null })
+          eq: async () => ({ data: [], error: null }),
+          gte: async () => ({ data: [], error: null })
         })
       }),
       upsert: async () => ({ error: null }),
-      insert: async () => ({ error: null })
+      insert: async () => ({ error: null }),
+      update: async () => ({ error: null }),
+      delete: async () => ({ error: null })
     }),
     storage: {
       from: () => ({
