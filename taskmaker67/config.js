@@ -1,6 +1,6 @@
 // FocusCraft Supabase Configuration
-const SUPABASE_URL = "https://yvvtvzgheuirhdxzoihh.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_KJD1_7c4r8eF3MvIT5h5Dw_UUeqdNEE";
+const SUPABASE_URL = "https://yvvtvzgheuirhdxzoihh.supabase.co/rest/v1/"; // Paste Project URL here
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dnR2emdoZXVpcmhkeHpvaWhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNjE3ODQsImV4cCI6MjEwNjgzNzc4NH0.45XFLeKr2YhBDrpSHVCaeo1x0TsCx-uJNgXNMk7T0iM";      // Paste ANON public key here
 
 let supabaseClient;
 
@@ -12,7 +12,6 @@ try {
   }
 } catch (err) {
   console.warn("FocusCraft: Running in preview mode. Update config.js with your real Supabase credentials.");
-  // Fallback mock object so the UI renders smoothly without crashing
   supabaseClient = {
     auth: {
       onAuthStateChange: () => {},
