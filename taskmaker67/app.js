@@ -1,4 +1,3 @@
-// Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
   const authForm = document.getElementById('auth-form');
   const authEmail = document.getElementById('auth-email');
@@ -12,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let isSignUp = false;
 
-  // Toggle between Sign In and Sign Up
+  // Toggle between Sign In and Sign Up modes
   if (authToggleBtn) {
     authToggleBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -31,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle Email/Password Form Submission
+  // Handle Email & Password Login / Signup
   if (authForm) {
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -53,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             password: password,
           });
           if (error) throw error;
-          showAlert('Sign up successful! Please check your email to confirm.', 'success');
+          showAlert('Sign up successful! You can now sign in.', 'success');
         } else {
           const { data, error } = await supabaseClient.auth.signInWithPassword({
             email: email,
@@ -64,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
           location.reload();
         }
       } catch (err) {
-        showAlert(err.message || 'An error occurred during authentication.', 'error');
+        showAlert(err.message || 'Authentication failed.', 'error');
       } finally {
         authSubmitBtn.disabled = false;
         authSubmitBtn.textContent = isSignUp ? 'Sign Up' : 'Sign In';
@@ -72,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle GitHub OAuth
+  // Handle GitHub OAuth Button
   if (githubBtn) {
     githubBtn.addEventListener('click', async () => {
       try {
