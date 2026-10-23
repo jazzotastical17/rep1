@@ -63,6 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const taskProgressBar = document.getElementById('task-progress-bar');
   const taskFilter = document.getElementById('task-filter');
   const taskSort = document.getElementById('task-sort');
+  // ---------- Step 5 organization elements ----------
+const taskSearch = document.getElementById('task-search');
+const taskPriorityFilter = document.getElementById('task-priority-filter');
+const taskDeadlineFilter = document.getElementById('task-deadline-filter');
+const taskClearFilters = document.getElementById('task-clear-filters');
+const taskResultsCount = document.getElementById('task-results-count');
   const taskAlert = document.getElementById('task-alert');
   const taskLoading = document.getElementById('task-loading');
   const taskEmpty = document.getElementById('task-empty');
@@ -470,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navBar.classList.remove('hidden');
     appScreen.classList.remove('hidden');
+    loadOrganizationPreferences();
 
     refreshIcons();
   }
@@ -741,30 +748,106 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
+  
+  // ============================================================
+  // STEP 5 - TASK ORGANIZATION
+  // ============================================================
+
+  
+  // ============================================================
+  // STEP 5 - TASK ORGANIZATION
+  // ============================================================
+
   function getFilteredTasks() {
-    const filter = taskFilter ? taskFilter.value : 'all';
+    const status = taskFilter ? taskFilter.value : 'all';
     const sort = taskSort ? taskSort.value : 'newest';
 
+    const search = taskSearch
+      ? taskSearch.value.trim().toLowerCase()
+      : '';
+
+    const priorityFilter = taskPriorityFilter
+      ? taskPriorityFilter.value
+      : 'all';
+
+    const deadlineFilter = taskDeadlineFilter
+      ? taskDeadlineFilter.value
+      : 'all';
+
+    const today = localToday();
+
     let result = tasks.filter((task) => {
-      if (filter === 'active') {
-        return !task.is_completed;
+      // Search task titles
+      if (
+        search &&
+        !String(task.title || '')
+          .toLowerCase()
+          .includes(search)
+      ) {
+        return false;
       }
 
-      if (filter === 'completed') {
-        return task.is_completed;
+      // Status filter
+      if (status === 'active' && task.is_completed) {
+        return false;
       }
 
-      if (filter === 'pinned') {
-        return task.is_pinned;
+      if (status === 'completed' && !task.is_completed) {
+        return false;
+      }
+
+      if (status === 'pinned' && !task.is_pinned) {
+        return false;
+      }
+
+      // Priority filter
+      if (
+        priorityFilter !== 'all' &&
+        normalizePriority(task.priority) !== priorityFilter
+      ) {
+        return false;
+      }
+
+      // Deadline filter
+      if (deadlineFilter === 'overdue') {
+        if (
+          task.is_completed ||
+          !task.due_date ||
+          task.due_date >= today
+        ) {
+          return false;
+        }
+      }
+
+      if (deadlineFilter === 'today') {
+        if (task.due_date !== today) {
+          return false;
+        }
+      }
+
+      if (deadlineFilter === 'upcoming') {
+        if (
+          !task.due_date ||
+          task.due_date <= today
+        ) {
+          return false;
+        }
+      }
+
+      if (deadlineFilter === 'none') {
+        if (task.due_date) {
+          return false;
+        }
       }
 
       return true;
     });
 
+    // Sort the filtered tasks
     result = [...result];
 
     result.sort((a, b) => {
-      // Pinned tasks stay first.
+      // Preserve Step 4 pinned-first behavior
       if (Boolean(a.is_pinned) !== Boolean(b.is_pinned)) {
         return a.is_pinned ? -1 : 1;
       }
@@ -801,6 +884,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return result;
   }
+
+  function updateTaskResultsCount(visibleCount) {
+    if (!taskResultsCount) return;
+
+    const total = tasks.length;
+
+    taskResultsCount.textContent =
+      `Showing ${visibleCount} of ${total} tasks`;
+  }
+
 
   function updateTaskStats() {
     const total = tasks.length;
@@ -1035,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const visibleTasks = getFilteredTasks();
+    updateTaskResultsCount(visibleTasks.length);
 
     taskEmpty.classList.toggle(
       'hidden',
@@ -1438,14 +1532,177 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ---------- Filtering and sorting ----------
+ 
+  // ============================================================
+  // STEP 5 - ORGANIZATION CONTROLS
+  // ============================================================
+
+  const ORGANIZATION_DEFAULTS = {
+    status: 'all',
+    priority: 'all',
+    deadline: 'all',
+    sort: 'newest',
+    search: ''
+  };
+
+  function organizationStorageKey() {
+    if (!currentUser) return null;
+
+    return `focuscraft-organization-${currentUser.id}`;
+  }
+
+  function saveOrganizationPreferences() {
+    const key = organizationStorageKey();
+    if (!key) return;
+
+    const preferences = {
+      status: taskFilter.value,
+      priority: taskPriorityFilter
+        ? taskPriorityFilter.value
+        : 'all',
+      deadline: taskDeadlineFilter
+        ? taskDeadlineFilter.value
+        : 'all',
+      sort: taskSort.value,
+      search: taskSearch ? taskSearch.value : ''
+    };
+
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify(preferences)
+      );
+    } catch (error) {
+      // Filters still work if browser storage is unavailable.
+    }
+  }
+
+  function setSelectValue(element, value, fallback) {
+    if (!element) return;
+
+    const valid = Array.from(element.options)
+      .some((option) => option.value === value);
+
+    element.value = valid ? value : fallback;
+  }
+
+  function loadOrganizationPreferences() {
+    const key = organizationStorageKey();
+    if (!key) return;
+
+    let preferences = ORGANIZATION_DEFAULTS;
+
+    try {
+      const saved = localStorage.getItem(key);
+
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          !Array.isArray(parsed)
+        ) {
+          preferences = {
+            ...ORGANIZATION_DEFAULTS,
+            ...parsed
+          };
+        }
+      }
+    } catch (error) {
+      preferences = ORGANIZATION_DEFAULTS;
+    }
+
+    setSelectValue(
+      taskFilter,
+      preferences.status,
+      'all'
+    );
+
+    setSelectValue(
+      taskPriorityFilter,
+      preferences.priority,
+      'all'
+    );
+
+    setSelectValue(
+      taskDeadlineFilter,
+      preferences.deadline,
+      'all'
+    );
+
+    setSelectValue(
+      taskSort,
+      preferences.sort,
+      'newest'
+    );
+
+    if (taskSearch) {
+      taskSearch.value =
+        typeof preferences.search === 'string'
+          ? preferences.search
+          : '';
+    }
+
+    renderTasks();
+  }
+
+  function organizationChanged() {
+    saveOrganizationPreferences();
+    renderTasks();
+  }
+
   if (taskFilter) {
-    taskFilter.addEventListener('change', renderTasks);
+    taskFilter.addEventListener(
+      'change',
+      organizationChanged
+    );
   }
 
   if (taskSort) {
-    taskSort.addEventListener('change', renderTasks);
+    taskSort.addEventListener(
+      'change',
+      organizationChanged
+    );
   }
+
+  if (taskPriorityFilter) {
+    taskPriorityFilter.addEventListener(
+      'change',
+      organizationChanged
+    );
+  }
+
+  if (taskDeadlineFilter) {
+    taskDeadlineFilter.addEventListener(
+      'change',
+      organizationChanged
+    );
+  }
+
+  if (taskSearch) {
+    taskSearch.addEventListener(
+      'input',
+      organizationChanged
+    );
+  }
+
+  if (taskClearFilters) {
+    taskClearFilters.addEventListener('click', () => {
+      if (taskSearch) taskSearch.value = '';
+      if (taskFilter) taskFilter.value = 'all';
+      if (taskPriorityFilter) {
+        taskPriorityFilter.value = 'all';
+      }
+      if (taskDeadlineFilter) {
+        taskDeadlineFilter.value = 'all';
+      }
+      if (taskSort) taskSort.value = 'newest';
+
+      organizationChanged();
+    });
+  }
+
 
   // ============================================================
   // BACKGROUNDS

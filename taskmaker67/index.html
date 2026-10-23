@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -174,6 +175,91 @@
       background: #f0fdf4;
     }
 
+    /* STEP 5: TASK ORGANIZATION */
+
+    .organization-panel {
+      background: rgba(248, 250, 252, 0.85);
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 1.25rem;
+    }
+
+    .organization-label {
+      display: block;
+      margin-bottom: 0.4rem;
+      color: #475569;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .task-search-wrap {
+      position: relative;
+    }
+
+    .task-search-wrap > i,
+    .task-search-wrap > svg {
+      position: absolute;
+      top: 50%;
+      left: 0.85rem;
+      transform: translateY(-50%);
+      width: 1.1rem;
+      height: 1.1rem;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+
+    .task-search-input {
+      padding-left: 2.65rem;
+    }
+
+    .organization-clear-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.65rem 0.95rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.6rem;
+      background: white;
+      color: #475569;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background-color 0.2s ease;
+    }
+
+    .organization-clear-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .organization-clear-btn:focus-visible,
+    .task-action-btn:focus-visible {
+      outline: 3px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    .organization-result-count {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .organization-result-count strong {
+      color: #0f172a;
+    }
+
+    .organization-tip {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .organization-tip svg {
+      flex-shrink: 0;
+    }
+
+    /* TASK MODAL */
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -213,6 +299,12 @@
     ::-webkit-scrollbar-thumb {
       background: rgba(0, 0, 0, 0.2);
       border-radius: 4px;
+    }
+
+    @media (max-width: 640px) {
+      .organization-panel {
+        padding: 1rem;
+      }
     }
   </style>
 </head>
@@ -475,25 +567,147 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div>
             <h3 class="text-xl font-bold text-slate-900">My Tasks</h3>
-            <p class="text-xs text-slate-500 mt-1">Plan your day, stay focused, and track your progress.</p>
+            <p class="text-xs text-slate-500 mt-1">
+              Plan your day, stay focused, and track your progress.
+            </p>
           </div>
 
-          <div class="flex flex-wrap gap-2">
-            <select id="task-filter" aria-label="Filter tasks" class="task-input w-auto">
-              <option value="all">All Tasks</option>
-              <option value="active">Remaining</option>
-              <option value="completed">Completed</option>
-              <option value="pinned">Pinned</option>
-            </select>
-
-            <select id="task-sort" aria-label="Sort tasks" class="task-input w-auto">
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="due">Due Date</option>
-              <option value="priority">Priority</option>
-            </select>
+          <div class="flex items-center gap-2 text-sm font-semibold theme-text">
+            <i data-lucide="list-filter" class="w-5 h-5"></i>
+            Task Organization
           </div>
         </div>
+
+        <!-- STEP 5: ORGANIZATION TOOLBAR -->
+        <div class="organization-panel mb-5">
+
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+              <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+            </div>
+
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">Find & Organize</h4>
+              <p class="text-xs text-slate-500">
+                Search, filter, and sort your tasks.
+              </p>
+            </div>
+          </div>
+
+          <!-- SEARCH -->
+          <div class="mb-4">
+            <label for="task-search" class="organization-label">
+              Search Tasks
+            </label>
+
+            <div class="task-search-wrap">
+              <i data-lucide="search" aria-hidden="true"></i>
+
+              <input
+                type="search"
+                id="task-search"
+                class="task-input task-search-input"
+                placeholder="Search by task title..."
+                autocomplete="off"
+                aria-label="Search tasks by title"
+              >
+            </div>
+          </div>
+
+          <!-- FILTERS -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+            <!-- STATUS FILTER: ORIGINAL ID PRESERVED -->
+            <div>
+              <label for="task-filter" class="organization-label">
+                Status
+              </label>
+
+              <select id="task-filter" class="task-input">
+                <option value="all">All Tasks</option>
+                <option value="active">Remaining</option>
+                <option value="completed">Completed</option>
+                <option value="pinned">Pinned</option>
+              </select>
+            </div>
+
+            <!-- PRIORITY FILTER -->
+            <div>
+              <label for="task-priority-filter" class="organization-label">
+                Priority
+              </label>
+
+              <select id="task-priority-filter" class="task-input">
+                <option value="all">All Priorities</option>
+                <option value="High">High Priority</option>
+                <option value="Medium">Medium Priority</option>
+                <option value="Low">Low Priority</option>
+              </select>
+            </div>
+
+            <!-- DEADLINE FILTER -->
+            <div>
+              <label for="task-deadline-filter" class="organization-label">
+                Deadline
+              </label>
+
+              <select id="task-deadline-filter" class="task-input">
+                <option value="all">All Deadlines</option>
+                <option value="overdue">Overdue</option>
+                <option value="today">Due Today</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="none">No Deadline</option>
+              </select>
+            </div>
+
+            <!-- SORT: ORIGINAL ID PRESERVED -->
+            <div>
+              <label for="task-sort" class="organization-label">
+                Sort By
+              </label>
+
+              <select id="task-sort" class="task-input">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="due">Due Date</option>
+                <option value="priority">Priority</option>
+              </select>
+            </div>
+
+          </div>
+
+          <!-- FILTER FOOTER -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-4 border-t border-slate-200">
+
+            <p
+              id="task-results-count"
+              class="organization-result-count"
+              role="status"
+              aria-live="polite"
+            >
+              Showing all tasks
+            </p>
+
+            <button
+              type="button"
+              id="task-clear-filters"
+              class="organization-clear-btn"
+            >
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              Clear Filters
+            </button>
+
+          </div>
+
+          <div class="organization-tip mt-3">
+            <i data-lucide="lightbulb" class="w-4 h-4"></i>
+            <span>
+              Tip: Combine filters to find exactly what you need.
+            </span>
+          </div>
+
+        </div>
+        <!-- END STEP 5 ORGANIZATION TOOLBAR -->
 
         <div id="task-alert" class="alert hidden" role="status" aria-live="polite"></div>
 
@@ -505,8 +719,14 @@
           <div class="w-16 h-16 bg-amber-100 rounded-2xl mx-auto flex items-center justify-center text-amber-600 mb-4">
             <i data-lucide="clipboard-list" class="w-8 h-8"></i>
           </div>
-          <h4 class="text-lg font-bold text-slate-900">No tasks here yet!</h4>
-          <p class="text-sm text-slate-500 mt-2">Create your first task or try a different filter.</p>
+
+          <h4 class="text-lg font-bold text-slate-900">
+            No tasks here yet!
+          </h4>
+
+          <p class="text-sm text-slate-500 mt-2">
+            Create your first task or try a different filter.
+          </p>
         </div>
 
         <!-- JavaScript creates task cards here -->
@@ -519,7 +739,9 @@
         <div class="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 class="text-lg font-bold text-slate-900">Backgrounds</h3>
-            <p class="text-xs text-slate-500 mt-0.5">JPG, PNG or GIF, up to 5 MB each. Only you can see your images.</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              JPG, PNG or GIF, up to 5 MB each. Only you can see your images.
+            </p>
           </div>
 
           <button type="button" id="bg-add-btn" class="px-4 py-2 rounded-lg font-semibold btn-primary text-sm shadow-md shrink-0 disabled:opacity-60 disabled:cursor-not-allowed">
@@ -559,8 +781,13 @@
 
       <div class="flex items-center justify-between gap-3 mb-5">
         <div>
-          <h2 id="task-modal-title" class="text-xl font-bold text-slate-900">Create a Task</h2>
-          <p class="text-xs text-slate-500 mt-1">Give your task a name and plan when to finish it.</p>
+          <h2 id="task-modal-title" class="text-xl font-bold text-slate-900">
+            Create a Task
+          </h2>
+
+          <p class="text-xs text-slate-500 mt-1">
+            Give your task a name and plan when to finish it.
+          </p>
         </div>
 
         <button type="button" id="task-modal-close" class="task-action-btn" aria-label="Close task form">
@@ -578,6 +805,7 @@
           <label for="task-title-input" class="block text-sm font-semibold text-slate-700 mb-1">
             Task Title
           </label>
+
           <input
             type="text"
             id="task-title-input"
@@ -593,14 +821,24 @@
             <label for="task-start-date" class="block text-sm font-semibold text-slate-700 mb-1">
               Start Date
             </label>
-            <input type="date" id="task-start-date" class="task-input">
+
+            <input
+              type="date"
+              id="task-start-date"
+              class="task-input"
+            >
           </div>
 
           <div>
             <label for="task-due-date" class="block text-sm font-semibold text-slate-700 mb-1">
               Due Date
             </label>
-            <input type="date" id="task-due-date" class="task-input">
+
+            <input
+              type="date"
+              id="task-due-date"
+              class="task-input"
+            >
           </div>
         </div>
 
@@ -617,16 +855,31 @@
         </div>
 
         <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer">
-          <input type="checkbox" id="task-pinned" class="w-4 h-4 accent-indigo-600">
-          <span class="text-sm font-medium text-slate-700">Pin this task to the top</span>
+          <input
+            type="checkbox"
+            id="task-pinned"
+            class="w-4 h-4 accent-indigo-600"
+          >
+
+          <span class="text-sm font-medium text-slate-700">
+            Pin this task to the top
+          </span>
         </label>
 
         <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-3 border-t border-slate-200">
-          <button type="button" id="task-cancel-btn" class="px-5 py-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <button
+            type="button"
+            id="task-cancel-btn"
+            class="px-5 py-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
             Cancel
           </button>
 
-          <button type="submit" id="task-save-btn" class="px-5 py-2.5 rounded-lg btn-primary text-sm font-semibold">
+          <button
+            type="submit"
+            id="task-save-btn"
+            class="px-5 py-2.5 rounded-lg btn-primary text-sm font-semibold"
+          >
             Save Task
           </button>
         </div>
