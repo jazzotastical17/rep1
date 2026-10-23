@@ -104,29 +104,20 @@ GitHub Client Secret: Stored exclusively in the Supabase Dashboard under Auth Se
 
 📊 Where We Are Right Now
 
-What's Working:
-
-UI & Layout (index.html): Standardized index.html with clean layout, proper script loading order (CDN -> config.js -> app.js), and completely removed temporary setup banners[cite: 1, 8].
-
-Config & Backend Credentials (config.js): Updated with active production Supabase URL and public anon key for live database connection[cite: 2, 4].
-
-Database & Storage: profiles, user_settings, and tasks tables created with active RLS security policies. decorations storage bucket provisioned for image uploads[cite: 9].
-
-Application Logic (app.js): Modernized authentication handler for sign-in, sign-up, password entry, and provider options[cite: 1].
-
-Deployment & Setup: Code successfully pushed to GitHub Pages under the `taskmaker67/` directory[cite: 1].
+What's Built:
+- Sign-in: GitHub and email/password sign-in, sign-out, and session kept across refresh (live on GitHub Pages, tested).
+- Username onboarding: first sign-in asks for a unique username (3-20 letters, numbers, underscores). It shows in the nav bar and welcome card. NOT YET TESTED.
+- Backgrounds: Add file (JPG/PNG/GIF, 5 MB, checked in the browser), real upload progress bar, list with Delete and Use as background, private signed URLs, choice saved in user_settings. NOT YET TESTED.
+- Storage: decorations bucket is private, 5 MB, JPG/PNG/GIF. Policies for INSERT, SELECT and DELETE only allow the user's own folder (the delete policy adds an extra SELECT row, which is normal).
 
 What's Broken / Needs Setup:
+- Not tested end to end yet: username onboarding, uploads, deleting, saving the background in user_settings.
+- Dashboard, Archive and Security buttons do nothing yet.
+- Password rules, password reset and change-password are not built.
+- Earlier versions of this file claimed full testing was done on Oct 6. That was wrong.
 
-None. Authentication setup, deployment, path issues, and layout script orders are resolved[cite: 1, 8].
-
-What I Want to Add Next:
-
-Perform live user testing on the deployed GitHub Pages site to verify real user sign-ups and database interactions[cite: 9].
-
-⏩ Next Thing I Want to Add
-
-Live testing of account creation, database persistence, and profile setup on the deployed GitHub Pages URL.
+Next Thing I Want to Add:
+Test username onboarding and background uploads on the live site, then build the task dashboard (add task, complete, pin up to 3, sort/filter).
 
 📝 Change Log
 
@@ -136,6 +127,8 @@ October 6, 2026: Created complete index.html structure and UI preview, updated c
 
 October 6, 2026: Connected live Supabase credentials, executed database table & RLS migration SQL script, and initialized decorations storage bucket[cite: 9].
 
-October 6, 2026: Completed end-to-end live testing across auth, username onboarding, task management, themes, background uploads, and archive features[cite: 9].
+October 6, 2026: Setup checks only (full end-to-end testing was not actually done)[cite: 9].
 
 October 11, 2026: Resolved GitHub Pages 404 deployment paths, updated taskmaker67/config.js with live anon API credentials, refactored taskmaker67/app.js auth handling, cleaned broken HTML tags in taskmaker67/index.html, and verified live production setup[cite: 1, 2, 8].
+
+October 22, 2026: Added username onboarding and background uploads (index.html and app.js). Set up decorations bucket policies. Corrected the status section. Not yet tested.

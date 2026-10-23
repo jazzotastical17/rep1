@@ -19,7 +19,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const welcomeName = document.getElementById('welcome-name');
   const welcomeAvatar = document.getElementById('welcome-avatar');
 
+  const usernameScreen = document.getElementById('username-screen');
+  const usernameForm = document.getElementById('username-form');
+  const usernameInput = document.getElementById('username-input');
+  const usernameBtn = document.getElementById('username-save-btn');
+  const usernameAlert = document.getElementById('username-alert');
+  const usernameSignOutBtn = document.getElementById('username-signout-btn');
+  const addFileBtn = document.getElementById('bg-add-btn');
+  const fileInput = document.getElementById('bg-file-input');
+  const bgAlert = document.getElementById('bg-alert');
+  const bgProgress = document.getElementById('bg-progress');
+  const bgProgressBar = document.getElementById('bg-progress-bar');
+  const bgProgressText = document.getElementById('bg-progress-text');
+  const bgList = document.getElementById('bg-list');
+  const bgRemoveBtn = document.getElementById('bg-remove-btn');
+
+  // Same limits as the Supabase bucket (Place 1 here, Place 2 in the bucket settings)
+  const BUCKET = 'decorations';
+  const MAX_BYTES = 5 * 1024 * 1024;
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+
   let isSignUp = false;
+  let currentUser = null;
+  let currentBgPath = null;
 
   // Toggle between Sign In and Sign Up modes
   if (authToggleBtn) {
@@ -133,8 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return meta.avatar_url || meta.picture || '';
   }
 
-  function showSignedIn(user) {
-    const name = getDisplayName(user);
+  function showSignedIn(user, username) {
+    const name = username || getDisplayName(user);
     const avatar = getAvatarUrl(user);
 
     userDisplayName.textContent = name;
@@ -153,11 +175,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     authScreen.classList.add('hidden');
+    usernameScreen.classList.add('hidden');
     navBar.classList.remove('hidden');
     appScreen.classList.remove('hidden');
   }
 
   function showSignedOut() {
+    currentUser = null;
+    currentBgPath = null;
+    document.body.style.backgroundImage = '';
+    usernameScreen.classList.add('hidden');
     navBar.classList.add('hidden');
     appScreen.classList.add('hidden');
     authScreen.classList.remove('hidden');
@@ -167,7 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show the right screen whenever sign-in state changes (also runs on page load / refresh)
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (session && session.user) {
-      showSignedIn(session.user);
+      // Load once per sign-in (token refreshes fire this event too)
+      if (!currentUser || currentUser.id !== session.user.id) {
+        currentUser = session.user;
+        setTimeout(() => loadUser(session.user), 0);
+      }
       // Clean the sign-in tokens/codes out of the address bar after returning from GitHub
       if (window.location.hash || window.location.search) {
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -193,5 +224,298 @@ document.addEventListener('DOMContentLoaded', () => {
     authAlert.textContent = message;
     authAlert.className = `alert ${type === 'error' ? 'alert-error' : 'alert-success'}`;
     authAlert.classList.remove('hidden');
+  }
+
+  // ---------- Username setup ----------
+  function setAlert(el, message, type) {
+    if (!el) return;
+    if (!message) {
+      el.className = 'alert hidden';
+      return;
+    }
+    el.textContent = message;
+    el.className = `alert ${type === 'error' ? 'alert-error' : 'alert-success'}`;
+  }
+
+  async function loadUser(user) {
+    const { data: profile, error } = await supabaseClient
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (error) {
+      showSignedIn(user);
+      setAlert(bgAlert, 'Could not load your profile: ' + error.message, 'error');
+      return;
+    }
+    if (!profile) {
+      authScreen.classList.add('hidden');
+      appScreen.classList.add('hidden');
+      navBar.classList.add('hidden');
+      usernameScreen.classList.remove('hidden');
+      usernameInput.focus();
+      return;
+    }
+    showSignedIn(user, profile.username);
+    await applySavedBackground();
+    await loadBackgrounds();
+  }
+
+  if (usernameForm) {
+    usernameForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
+        setAlert(usernameAlert, 'Use 3 to 20 characters: letters, numbers and underscores only.', 'error');
+        return;
+      }
+      usernameBtn.disabled = true;
+      usernameBtn.textContent = 'Saving...';
+      const { error } = await supabaseClient
+        .from('profiles')
+        .insert({ id: currentUser.id, username: username });
+      usernameBtn.disabled = false;
+      usernameBtn.textContent = 'Save username';
+      if (error) {
+        if (error.code === '23505') {
+          setAlert(usernameAlert, 'That username is taken. Try another one.', 'error');
+        } else {
+          setAlert(usernameAlert, 'Could not save your username: ' + error.message, 'error');
+        }
+        return;
+      }
+      setAlert(usernameAlert, '');
+      showSignedIn(currentUser, username);
+      await applySavedBackground();
+      await loadBackgrounds();
+    });
+  }
+
+  if (usernameSignOutBtn) {
+    usernameSignOutBtn.addEventListener('click', () => supabaseClient.auth.signOut());
+  }
+
+  // ---------- Backgrounds (private bucket, signed URLs) ----------
+  function formatSize(bytes) {
+    if (bytes === undefined || bytes === null) return '';
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  async function getSignedUrl(path) {
+    const { data, error } = await supabaseClient.storage.from(BUCKET).createSignedUrl(path, 3600);
+    return error ? null : data.signedUrl;
+  }
+
+  function setBackground(path, url) {
+    currentBgPath = path;
+    document.body.style.backgroundImage = `url("${url}")`;
+  }
+
+  function clearBackground() {
+    currentBgPath = null;
+    document.body.style.backgroundImage = '';
+  }
+
+  async function applySavedBackground() {
+    clearBackground();
+    const { data } = await supabaseClient
+      .from('user_settings')
+      .select('background_image_url')
+      .eq('user_id', currentUser.id)
+      .limit(1);
+    const path = data && data[0] && data[0].background_image_url;
+    if (!path) return;
+    const url = await getSignedUrl(path);
+    if (url) setBackground(path, url);
+  }
+
+  // Saves the image's storage path (not the expiring link) in user_settings
+  async function saveBackgroundSetting(path) {
+    const { data: rows, error: findError } = await supabaseClient
+      .from('user_settings')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .limit(1);
+    if (findError) return findError;
+    const request = rows && rows.length
+      ? supabaseClient.from('user_settings').update({ background_image_url: path }).eq('id', rows[0].id)
+      : supabaseClient.from('user_settings').insert({ id: crypto.randomUUID(), user_id: currentUser.id, background_image_url: path });
+    const { error } = await request;
+    return error;
+  }
+
+  async function useBackground(path) {
+    const url = await getSignedUrl(path);
+    if (!url) {
+      setAlert(bgAlert, 'Could not open that image. Try again.', 'error');
+      return;
+    }
+    const error = await saveBackgroundSetting(path);
+    if (error) {
+      setAlert(bgAlert, 'Could not save your background: ' + error.message, 'error');
+      return;
+    }
+    setBackground(path, url);
+    setAlert(bgAlert, 'Background updated.', 'success');
+    await loadBackgrounds();
+  }
+
+  async function removeBackground() {
+    if (!currentBgPath) {
+      setAlert(bgAlert, 'No background is set.', 'error');
+      return;
+    }
+    const error = await saveBackgroundSetting(null);
+    if (error) {
+      setAlert(bgAlert, 'Could not remove your background: ' + error.message, 'error');
+      return;
+    }
+    clearBackground();
+    setAlert(bgAlert, 'Background removed.', 'success');
+    await loadBackgrounds();
+  }
+
+  async function deleteBackground(path) {
+    if (!confirm('Delete this image?')) return;
+    const { data, error } = await supabaseClient.storage.from(BUCKET).remove([path]);
+    if (error || !data || !data.length) {
+      setAlert(bgAlert, error ? 'Could not delete that image: ' + error.message : 'Could not delete that image. The delete rule may be missing.', 'error');
+      return;
+    }
+    if (path === currentBgPath) {
+      await saveBackgroundSetting(null);
+      clearBackground();
+    }
+    setAlert(bgAlert, 'Image deleted.', 'success');
+    await loadBackgrounds();
+  }
+
+  async function loadBackgrounds() {
+    const { data, error } = await supabaseClient.storage
+      .from(BUCKET)
+      .list(currentUser.id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) {
+      setAlert(bgAlert, 'Could not load your images: ' + error.message, 'error');
+      return;
+    }
+    const files = (data || []).filter((f) => f.id);
+    bgList.innerHTML = '';
+    if (!files.length) {
+      bgList.innerHTML = '<p class="text-sm text-slate-500">No images yet. Click Add file to upload one.</p>';
+      return;
+    }
+    const paths = files.map((f) => `${currentUser.id}/${f.name}`);
+    const { data: signed } = await supabaseClient.storage.from(BUCKET).createSignedUrls(paths, 3600);
+
+    files.forEach((f, i) => {
+      const path = paths[i];
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 p-2 rounded-lg border border-slate-200 bg-white/70';
+
+      const img = document.createElement('img');
+      img.src = signed && signed[i] && signed[i].signedUrl ? signed[i].signedUrl : '';
+      img.alt = '';
+      img.className = 'w-16 h-12 rounded object-cover bg-slate-200 shrink-0';
+
+      const info = document.createElement('div');
+      info.className = 'flex-1 min-w-0';
+      const name = document.createElement('p');
+      name.className = 'text-sm font-semibold text-slate-800 truncate';
+      name.textContent = f.name.replace(/^\d+-/, '');
+      const meta = document.createElement('p');
+      meta.className = 'text-xs text-slate-500';
+      meta.textContent = formatSize(f.metadata && f.metadata.size) + (path === currentBgPath ? ' (in use)' : '');
+      info.append(name, meta);
+
+      const useBtn = document.createElement('button');
+      useBtn.type = 'button';
+      useBtn.className = 'btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold';
+      useBtn.textContent = 'Use as background';
+      useBtn.addEventListener('click', () => useBackground(path));
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', () => deleteBackground(path));
+
+      row.append(img, info, useBtn, delBtn);
+      bgList.appendChild(row);
+    });
+  }
+
+  function setProgress(percent) {
+    bgProgress.classList.remove('hidden');
+    bgProgressBar.style.width = percent + '%';
+    bgProgressText.textContent = percent + '%';
+  }
+
+  function uploadErrorText(xhr) {
+    let msg = '';
+    try { msg = JSON.parse(xhr.responseText).message || ''; } catch (e) { msg = ''; }
+    if (xhr.status === 413 || /exceeded the maximum/i.test(msg)) return 'That file is too big. The limit is 5 MB.';
+    if (/mime type/i.test(msg)) return 'That file type is not allowed. Use a JPG, PNG or GIF.';
+    if (/row-level security/i.test(msg) || xhr.status === 403) return 'Upload blocked: the upload rule for your folder is missing or wrong.';
+    if (/bucket not found/i.test(msg) || xhr.status === 404) return 'Bucket not found. Its name must be exactly "decorations".';
+    return 'Upload failed' + (msg ? ': ' + msg : '. Try again.');
+  }
+
+  // XMLHttpRequest is used because it reports real upload progress
+  async function uploadWithProgress(file, path) {
+    const { data } = await supabaseClient.auth.getSession();
+    if (!data.session) throw new Error('You are signed out. Please sign in again.');
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`);
+      xhr.setRequestHeader('Authorization', `Bearer ${data.session.access_token}`);
+      xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(uploadErrorText(xhr)));
+      };
+      xhr.onerror = () => reject(new Error('Network problem. Check your internet and try again.'));
+      const form = new FormData();
+      form.append('cacheControl', '3600');
+      form.append('', file);
+      setProgress(0);
+      xhr.send(form);
+    });
+  }
+
+  if (addFileBtn) addFileBtn.addEventListener('click', () => fileInput.click());
+  if (bgRemoveBtn) bgRemoveBtn.addEventListener('click', removeBackground);
+
+  if (fileInput) {
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      fileInput.value = '';
+      if (!file) return;
+      setAlert(bgAlert, '');
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        setAlert(bgAlert, 'That file type is not allowed. Use a JPG, PNG or GIF.', 'error');
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        setAlert(bgAlert, `That file is ${formatSize(file.size)}. The limit is 5 MB.`, 'error');
+        return;
+      }
+      const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      const path = `${currentUser.id}/${Date.now()}-${safeName}`;
+      addFileBtn.disabled = true;
+      try {
+        await uploadWithProgress(file, path);
+        setAlert(bgAlert, 'Image uploaded.', 'success');
+        await loadBackgrounds();
+      } catch (err) {
+        setAlert(bgAlert, err.message, 'error');
+      } finally {
+        addFileBtn.disabled = false;
+        bgProgress.classList.add('hidden');
+      }
+    });
   }
 });
