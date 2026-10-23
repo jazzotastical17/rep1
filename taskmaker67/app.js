@@ -73,6 +73,15 @@ const taskResultsCount = document.getElementById('task-results-count');
   const taskLoading = document.getElementById('task-loading');
   const taskEmpty = document.getElementById('task-empty');
   const taskList = document.getElementById('task-list');
+  // ---------- Step 6 archive elements ----------
+const archiveScreen = document.getElementById('archive-screen');
+const archiveList = document.getElementById('archive-list');
+const archiveCount = document.getElementById('archive-count');
+const archiveAlert = document.getElementById('archive-alert');
+const archiveLoading = document.getElementById('archive-loading');
+const archiveEmpty = document.getElementById('archive-empty');
+const archiveBackBtn = document.getElementById('archive-back-btn');
+const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
 
   // ---------- Task modal elements ----------
   const taskModal = document.getElementById('task-modal');
@@ -104,18 +113,19 @@ const taskResultsCount = document.getElementById('task-results-count');
     'image/gif'
   ];
 
-  const TASK_COLUMNS = [
-    'id',
-    'user_id',
-    'title',
-    'start_date',
-    'due_date',
-    'priority',
-    'is_pinned',
-    'is_completed',
-    'completed_at',
-    'created_at'
-  ].join(',');
+ const TASK_COLUMNS = [
+  'id',
+  'user_id',
+  'title',
+  'start_date',
+  'due_date',
+  'priority',
+  'is_pinned',
+  'is_completed',
+  'completed_at',
+  'created_at',
+  'archived_at'
+].join(',');
 
   // ---------- Application state ----------
   let isSignUp = false;
@@ -125,6 +135,7 @@ const taskResultsCount = document.getElementById('task-results-count');
   let tasks = [];
   let tasksLoading = false;
   let taskBusy = false;
+  let currentTaskView = 'dashboard';
   let sessionVersion = 0;
 
   // ============================================================
@@ -194,13 +205,18 @@ const taskResultsCount = document.getElementById('task-results-count');
     }
   }
 
-  function hideAllScreens() {
-    authScreen.classList.add('hidden');
-    usernameScreen.classList.add('hidden');
-    resetScreen.classList.add('hidden');
-    appScreen.classList.add('hidden');
-    navBar.classList.add('hidden');
+ function hideAllScreens() {
+  authScreen.classList.add('hidden');
+  usernameScreen.classList.add('hidden');
+  resetScreen.classList.add('hidden');
+  appScreen.classList.add('hidden');
+
+  if (archiveScreen) {
+    archiveScreen.classList.add('hidden');
   }
+
+  navBar.classList.add('hidden');
+}
 
   // ============================================================
   // AUTHENTICATION
@@ -439,6 +455,7 @@ const taskResultsCount = document.getElementById('task-results-count');
     tasks = [];
     tasksLoading = false;
     taskBusy = false;
+    currentTaskView = 'dashboard';
 
     document.body.style.backgroundImage = '';
 
@@ -462,6 +479,11 @@ const taskResultsCount = document.getElementById('task-results-count');
     if (avatar) {
       userAvatar.src = avatar;
       userAvatar.classList.remove('hidden');
+      currentTaskView = 'dashboard';
+
+if (archiveScreen) {
+  archiveScreen.classList.add('hidden');
+}
       userAvatarFallback.classList.add('hidden');
 
       welcomeAvatar.src = avatar;
@@ -776,8 +798,9 @@ const taskResultsCount = document.getElementById('task-results-count');
 
     const today = localToday();
 
-    let result = tasks.filter((task) => {
-      // Search task titles
+let result = tasks.filter((task) => {
+  // Step 6: Archived tasks never appear on the dashboard.
+  if (task.archived_at) return false;      // Search task titles
       if (
         search &&
         !String(task.title || '')
@@ -886,40 +909,46 @@ const taskResultsCount = document.getElementById('task-results-count');
   }
 
   function updateTaskResultsCount(visibleCount) {
-    if (!taskResultsCount) return;
+  if (!taskResultsCount) return;
 
-    const total = tasks.length;
+  const total = tasks.filter(
+    (task) => !task.archived_at
+  ).length;
 
-    taskResultsCount.textContent =
-      `Showing ${visibleCount} of ${total} tasks`;
-  }
+  taskResultsCount.textContent =
+    `Showing ${visibleCount} of ${total} tasks`;
+}
 
 
   function updateTaskStats() {
-    const total = tasks.length;
+  const dashboardTasks = tasks.filter(
+    (task) => !task.archived_at
+  );
 
-    const completed = tasks.filter(
-      (task) => task.is_completed
-    ).length;
+  const total = dashboardTasks.length;
 
-    const remaining = total - completed;
+  const completed = dashboardTasks.filter(
+    (task) => task.is_completed
+  ).length;
 
-    const percentage = total
-      ? Math.round((completed / total) * 100)
-      : 0;
+  const remaining = total - completed;
 
-    taskTotalCount.textContent = total;
-    taskCompletedCount.textContent = completed;
-    taskRemainingCount.textContent = remaining;
+  const percentage = total
+    ? Math.round((completed / total) * 100)
+    : 0;
 
-    taskProgressLabel.textContent = percentage + '%';
-    taskProgressBar.style.width = percentage + '%';
+  taskTotalCount.textContent = total;
+  taskCompletedCount.textContent = completed;
+  taskRemainingCount.textContent = remaining;
 
-    taskProgressTrack.setAttribute(
-      'aria-valuenow',
-      String(percentage)
-    );
-  }
+  taskProgressLabel.textContent = percentage + '%';
+  taskProgressBar.style.width = percentage + '%';
+
+  taskProgressTrack.setAttribute(
+    'aria-valuenow',
+    String(percentage)
+  );
+}
 
   function createIcon(name, className = 'w-4 h-4') {
     const icon = document.createElement('i');
@@ -1094,15 +1123,17 @@ const taskResultsCount = document.getElementById('task-results-count');
 
     deleteButton.classList.add('hover:text-red-600');
 
-    pinButton.disabled = taskBusy;
-    editButton.disabled = taskBusy;
-    deleteButton.disabled = taskBusy;
+pinButton.disabled = taskBusy;
+editButton.disabled = taskBusy;
+archiveButton.disabled = taskBusy;
+deleteButton.disabled = taskBusy;
 
-    actions.append(
-      pinButton,
-      editButton,
-      deleteButton
-    );
+actions.append(
+  pinButton,
+  editButton,
+  archiveButton,
+  deleteButton
+);
 
     outer.appendChild(actions);
     card.appendChild(outer);
@@ -1178,11 +1209,12 @@ const taskResultsCount = document.getElementById('task-results-count');
         'error'
       );
     } finally {
-      if (isCurrentSession(userId, version)) {
-        tasksLoading = false;
-        renderTasks();
-      }
-    }
+  if (isCurrentSession(userId, version)) {
+    tasksLoading = false;
+    renderTasks();
+    renderArchive();
+  }
+}
   }
 
   // ---------- Task modal ----------
@@ -1485,13 +1517,13 @@ const taskResultsCount = document.getElementById('task-results-count');
       taskBusy = false;
     }
   }
-
+  
   // ---------- Delete task ----------
   async function deleteTask(task) {
     if (!currentUser || taskBusy) return;
 
     const confirmed = window.confirm(
-      'Delete "' + task.title + '"?\n\n' +
+      'Permanently delete "' + task.title + '"?\n\n' +
       'This cannot be undone.'
     );
 
@@ -1499,6 +1531,7 @@ const taskResultsCount = document.getElementById('task-results-count');
 
     const userId = currentUser.id;
     const version = sessionVersion;
+    const wasArchived = Boolean(task.archived_at);
 
     taskBusy = true;
 
@@ -1519,20 +1552,312 @@ const taskResultsCount = document.getElementById('task-results-count');
       }
 
       await loadTasks();
+
+      if (!isCurrentSession(userId, version)) return;
+
+      setAlert(
+        wasArchived ? archiveAlert : taskAlert,
+        wasArchived
+          ? 'Archived task permanently deleted.'
+          : 'Task permanently deleted.',
+        'success'
+      );
     } catch (error) {
       if (!isCurrentSession(userId, version)) return;
 
       setAlert(
-        taskAlert,
+        wasArchived ? archiveAlert : taskAlert,
         error.message || 'Could not delete task.',
         'error'
       );
     } finally {
       taskBusy = false;
+
+      if (isCurrentSession(userId, version)) {
+        renderTasks();
+        renderArchive();
+      }
     }
   }
 
  
+  // ============================================================
+  // STEP 6 - TASK ARCHIVE
+  // ============================================================
+
+  function getArchivedTasks() {
+    return tasks
+      .filter((task) => Boolean(task.archived_at))
+      .sort((a, b) =>
+        new Date(b.archived_at).getTime() -
+        new Date(a.archived_at).getTime()
+      );
+  }
+
+  function showTaskView(view) {
+    if (!currentUser || !archiveScreen) return;
+
+    currentTaskView =
+      view === 'archive' ? 'archive' : 'dashboard';
+
+    const showingArchive = currentTaskView === 'archive';
+
+    appScreen.classList.toggle('hidden', showingArchive);
+    archiveScreen.classList.toggle('hidden', !showingArchive);
+
+    if (navDashboardLink) {
+      navDashboardLink.setAttribute(
+        'aria-current',
+        showingArchive ? 'false' : 'page'
+      );
+    }
+
+    if (navArchiveBtn) {
+      navArchiveBtn.setAttribute(
+        'aria-current',
+        showingArchive ? 'page' : 'false'
+      );
+    }
+
+    if (showingArchive) {
+      renderArchive();
+    } else {
+      renderTasks();
+    }
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  function createArchivedTaskCard(task) {
+    const card = document.createElement('article');
+    card.className = 'archive-card';
+
+    const layout = document.createElement('div');
+    layout.className =
+      'flex flex-col sm:flex-row sm:items-start ' +
+      'sm:justify-between gap-4';
+
+    const content = document.createElement('div');
+    content.className = 'flex-1 min-w-0';
+
+    const heading = document.createElement('div');
+    heading.className =
+      'flex flex-wrap items-center gap-2 mb-2';
+
+    const title = document.createElement('h4');
+    title.className =
+      'text-sm sm:text-base font-bold text-slate-900 break-words';
+    title.textContent = task.title;
+
+    heading.appendChild(title);
+
+    const priority = normalizePriority(task.priority);
+    const priorityBadge = document.createElement('span');
+    priorityBadge.className =
+      'text-xs font-semibold px-2 py-1 rounded-full ' +
+      'priority-' + priority.toLowerCase();
+    priorityBadge.textContent = priority;
+
+    heading.appendChild(priorityBadge);
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className =
+      'text-xs font-semibold px-2 py-1 rounded-full ' +
+      (task.is_completed
+        ? 'bg-green-100 text-green-700'
+        : 'bg-slate-100 text-slate-600');
+
+    statusBadge.textContent =
+      task.is_completed ? 'Completed' : 'Not completed';
+
+    heading.appendChild(statusBadge);
+    content.appendChild(heading);
+
+    const details = document.createElement('div');
+    details.className =
+      'flex flex-wrap items-center gap-x-4 gap-y-1 archive-meta';
+
+    function addDetail(text) {
+      const item = document.createElement('span');
+      item.textContent = text;
+      details.appendChild(item);
+    }
+
+    if (task.start_date) {
+      addDetail('Starts: ' + formatTaskDate(task.start_date));
+    }
+
+    if (task.due_date) {
+      addDetail('Due: ' + formatTaskDate(task.due_date));
+    }
+
+    if (task.archived_at) {
+      addDetail(
+        'Archived: ' +
+        new Date(task.archived_at).toLocaleDateString()
+      );
+    }
+
+    if (task.is_pinned) {
+      addDetail('Previously pinned');
+    }
+
+    content.appendChild(details);
+
+    const actions = document.createElement('div');
+    actions.className =
+      'flex flex-wrap items-center gap-2 shrink-0';
+
+    const restoreButton = document.createElement('button');
+    restoreButton.type = 'button';
+    restoreButton.className = 'archive-action-btn';
+    restoreButton.textContent = 'Restore';
+    restoreButton.setAttribute(
+      'aria-label',
+      'Restore ' + task.title
+    );
+    restoreButton.disabled = taskBusy;
+
+    restoreButton.addEventListener('click', () => {
+      restoreTask(task);
+    });
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className =
+      'archive-action-btn text-red-600 hover:text-red-700';
+    deleteButton.textContent = 'Delete';
+    deleteButton.setAttribute(
+      'aria-label',
+      'Permanently delete ' + task.title
+    );
+    deleteButton.disabled = taskBusy;
+
+    deleteButton.addEventListener('click', () => {
+      deleteTask(task);
+    });
+
+    actions.append(restoreButton, deleteButton);
+    layout.append(content, actions);
+    card.appendChild(layout);
+
+    return card;
+  }
+
+  function renderArchive() {
+    if (!archiveList) return;
+
+    const archivedTasks = getArchivedTasks();
+
+    if (archiveCount) {
+      archiveCount.textContent = String(archivedTasks.length);
+    }
+
+    if (archiveLoading) {
+      archiveLoading.classList.toggle(
+        'hidden',
+        !tasksLoading
+      );
+    }
+
+    archiveList.replaceChildren();
+
+    if (tasksLoading) {
+      if (archiveEmpty) archiveEmpty.classList.add('hidden');
+      return;
+    }
+
+    if (archiveEmpty) {
+      archiveEmpty.classList.toggle(
+        'hidden',
+        archivedTasks.length > 0
+      );
+    }
+
+    archivedTasks.forEach((task) => {
+      archiveList.appendChild(createArchivedTaskCard(task));
+    });
+
+    refreshIcons();
+  }
+
+  async function setTaskArchived(task, archived) {
+    if (!currentUser || taskBusy) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
+    taskBusy = true;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .update({
+          archived_at: archived
+            ? new Date().toISOString()
+            : null
+        })
+        .eq('id', task.id)
+        .eq('user_id', userId)
+        .select('id');
+
+      if (!isCurrentSession(userId, version)) return;
+
+      if (error) throw error;
+
+      if (!data || data.length !== 1) {
+        throw new Error(
+          archived
+            ? 'Task could not be archived.'
+            : 'Task could not be restored.'
+        );
+      }
+
+      await loadTasks();
+
+      if (!isCurrentSession(userId, version)) return;
+
+      setAlert(
+        archived ? taskAlert : archiveAlert,
+        archived
+          ? 'Task archived successfully!'
+          : 'Task restored to your dashboard!',
+        'success'
+      );
+    } catch (error) {
+      if (!isCurrentSession(userId, version)) return;
+
+      setAlert(
+        archived ? taskAlert : archiveAlert,
+        error.message ||
+          (archived
+            ? 'Could not archive task.'
+            : 'Could not restore task.'),
+        'error'
+      );
+    } finally {
+      taskBusy = false;
+
+      if (isCurrentSession(userId, version)) {
+        renderTasks();
+        renderArchive();
+      }
+    }
+  }
+
+  function archiveTask(task) {
+    if (task.archived_at) return;
+    return setTaskArchived(task, true);
+  }
+
+  function restoreTask(task) {
+    if (!task.archived_at) return;
+    return setTaskArchived(task, false);
+  }
+
   // ============================================================
   // STEP 5 - ORGANIZATION CONTROLS
   // ============================================================
@@ -2296,12 +2621,15 @@ const taskResultsCount = document.getElementById('task-results-count');
   // ============================================================
 
   function scrollToDashboard() {
-    if (appScreen.classList.contains('hidden')) return;
 
-    appScreen.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
+  // ============================================================
+  // STEP 6 - NAVIGATION
+  // ============================================================
+
+  function scrollToDashboard() {
+    if (!currentUser) return;
+
+    showTaskView('dashboard');
   }
 
   if (navDashboardBtn) {
@@ -2318,31 +2646,44 @@ const taskResultsCount = document.getElementById('task-results-count');
     );
   }
 
-  // Archive and account security are later roadmap steps.
-  // Avoid pretending they are already implemented.
   if (navArchiveBtn) {
     navArchiveBtn.addEventListener('click', () => {
-      setAlert(
-        taskAlert,
-        'Archive is coming in a later FocusCraft step!',
-        'success'
-      );
+      if (!currentUser) return;
 
-      scrollToDashboard();
+      setAlert(archiveAlert, '');
+      showTaskView('archive');
     });
   }
 
+  if (archiveBackBtn) {
+    archiveBackBtn.addEventListener(
+      'click',
+      scrollToDashboard
+    );
+  }
+
+  if (archiveEmptyBackBtn) {
+    archiveEmptyBackBtn.addEventListener(
+      'click',
+      scrollToDashboard
+    );
+  }
+
+  // Security settings will be implemented in Step 7.
   if (navPasswordBtn) {
     navPasswordBtn.addEventListener('click', () => {
+      if (!currentUser) return;
+
+      showTaskView('dashboard');
+
       setAlert(
         taskAlert,
         'Account security settings are coming in a later FocusCraft step!',
         'success'
       );
-
-      scrollToDashboard();
     });
   }
+
 
   // ---------- Initial dashboard ----------
   renderTasks();
