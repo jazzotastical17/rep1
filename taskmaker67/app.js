@@ -1114,7 +1114,11 @@ let result = tasks.filter((task) => {
       'pencil',
       () => openEditTaskModal(task)
     );
-
+const archiveButton = createActionButton(
+  'Archive task',
+  'archive',
+  () => archiveTask(task)
+);
     const deleteButton = createActionButton(
       'Delete task',
       'trash-2',
