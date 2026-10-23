@@ -1445,12 +1445,17 @@ actions.append(
     try {
       const { data, error } = await supabaseClient
         .from('tasks')
-        .update({
-          is_completed: completed,
-          completed_at: completed
-            ? new Date().toISOString()
-            : null
-        })
+        
+.update({
+  is_completed: completed,
+  completed_at: completed
+    ? new Date().toISOString()
+    : null,
+  archived_at: completed
+    ? new Date().toISOString()
+    : null
+})
+
         .eq('id', task.id)
         .eq('user_id', userId)
         .select('id');
