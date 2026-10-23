@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // ============================================================
+  // FOCUSCRAFT - STEP 4
+  // Authentication, usernames, backgrounds, and task dashboard
+  // ============================================================
+
+  // ---------- Authentication elements ----------
   const authForm = document.getElementById('auth-form');
   const authEmail = document.getElementById('auth-email');
   const authPassword = document.getElementById('auth-password');
@@ -9,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const authAlert = document.getElementById('auth-alert');
   const githubBtn = document.getElementById('github-login-btn');
   const forgotBtn = document.getElementById('forgot-password-btn');
+
+  // ---------- Password recovery elements ----------
   const resetScreen = document.getElementById('reset-screen');
   const resetForm = document.getElementById('reset-form');
   const resetPassword = document.getElementById('reset-password');
@@ -16,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetAlert = document.getElementById('reset-alert');
   const resetSubmit = document.getElementById('reset-submit-btn');
 
+  // ---------- Screens and navigation ----------
   const authScreen = document.getElementById('auth-screen');
   const appScreen = document.getElementById('app-screen');
   const navBar = document.getElementById('nav-bar');
@@ -26,12 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const welcomeName = document.getElementById('welcome-name');
   const welcomeAvatar = document.getElementById('welcome-avatar');
 
+  // ---------- Username elements ----------
   const usernameScreen = document.getElementById('username-screen');
   const usernameForm = document.getElementById('username-form');
   const usernameInput = document.getElementById('username-input');
   const usernameBtn = document.getElementById('username-save-btn');
   const usernameAlert = document.getElementById('username-alert');
   const usernameSignOutBtn = document.getElementById('username-signout-btn');
+
+  // ---------- Background elements ----------
   const addFileBtn = document.getElementById('bg-add-btn');
   const fileInput = document.getElementById('bg-file-input');
   const bgAlert = document.getElementById('bg-alert');
@@ -41,22 +53,160 @@ document.addEventListener('DOMContentLoaded', () => {
   const bgList = document.getElementById('bg-list');
   const bgRemoveBtn = document.getElementById('bg-remove-btn');
 
-  // Same limits as the Supabase bucket (Place 1 here, Place 2 in the bucket settings)
+  // ---------- Dashboard elements ----------
+  const taskAddBtn = document.getElementById('task-add-btn');
+  const taskTotalCount = document.getElementById('task-total-count');
+  const taskCompletedCount = document.getElementById('task-completed-count');
+  const taskRemainingCount = document.getElementById('task-remaining-count');
+  const taskProgressLabel = document.getElementById('task-progress-label');
+  const taskProgressTrack = document.getElementById('task-progress-track');
+  const taskProgressBar = document.getElementById('task-progress-bar');
+  const taskFilter = document.getElementById('task-filter');
+  const taskSort = document.getElementById('task-sort');
+  const taskAlert = document.getElementById('task-alert');
+  const taskLoading = document.getElementById('task-loading');
+  const taskEmpty = document.getElementById('task-empty');
+  const taskList = document.getElementById('task-list');
+
+  // ---------- Task modal elements ----------
+  const taskModal = document.getElementById('task-modal');
+  const taskModalTitle = document.getElementById('task-modal-title');
+  const taskModalClose = document.getElementById('task-modal-close');
+  const taskCancelBtn = document.getElementById('task-cancel-btn');
+  const taskForm = document.getElementById('task-form');
+  const taskFormAlert = document.getElementById('task-form-alert');
+  const taskEditId = document.getElementById('task-edit-id');
+  const taskTitleInput = document.getElementById('task-title-input');
+  const taskStartDate = document.getElementById('task-start-date');
+  const taskDueDate = document.getElementById('task-due-date');
+  const taskPriority = document.getElementById('task-priority');
+  const taskPinned = document.getElementById('task-pinned');
+  const taskSaveBtn = document.getElementById('task-save-btn');
+
+  // ---------- Navigation buttons ----------
+  const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+  const navDashboardLink = document.getElementById('nav-dashboard-btn-link');
+  const navArchiveBtn = document.getElementById('nav-archive-btn');
+  const navPasswordBtn = document.getElementById('nav-password-btn');
+
+  // ---------- Constants ----------
   const BUCKET = 'decorations';
   const MAX_BYTES = 5 * 1024 * 1024;
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+  const ALLOWED_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/gif'
+  ];
 
+  const TASK_COLUMNS = [
+    'id',
+    'user_id',
+    'title',
+    'start_date',
+    'due_date',
+    'priority',
+    'is_pinned',
+    'is_completed',
+    'completed_at',
+    'created_at'
+  ].join(',');
+
+  // ---------- Application state ----------
   let isSignUp = false;
   let isPasswordRecovery = false;
   let currentUser = null;
   let currentBgPath = null;
+  let tasks = [];
+  let tasksLoading = false;
+  let taskBusy = false;
+  let sessionVersion = 0;
 
-  // Toggle between Sign In and Sign Up modes
+  // ============================================================
+  // GENERAL HELPERS
+  // ============================================================
+
+  function setAlert(element, message, type = 'success') {
+    if (!element) return;
+
+    if (!message) {
+      element.textContent = '';
+      element.className = 'alert hidden';
+      return;
+    }
+
+    element.textContent = message;
+    element.className =
+      'alert ' +
+      (type === 'error' ? 'alert-error' : 'alert-success');
+
+    element.classList.remove('hidden');
+  }
+
+  function showAlert(message, type = 'success') {
+    setAlert(authAlert, message, type);
+  }
+
+  function refreshIcons() {
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+      lucide.createIcons();
+    }
+  }
+
+  function isCurrentSession(userId, version) {
+    return (
+      currentUser &&
+      currentUser.id === userId &&
+      sessionVersion === version
+    );
+  }
+
+  function getDisplayName(user) {
+    const meta = user.user_metadata || {};
+
+    return (
+      meta.user_name ||
+      meta.preferred_username ||
+      meta.name ||
+      meta.full_name ||
+      user.email ||
+      'User'
+    );
+  }
+
+  function getAvatarUrl(user) {
+    const meta = user.user_metadata || {};
+    return meta.avatar_url || meta.picture || '';
+  }
+
+  function cleanAuthUrl() {
+    if (window.location.hash || window.location.search) {
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+    }
+  }
+
+  function hideAllScreens() {
+    authScreen.classList.add('hidden');
+    usernameScreen.classList.add('hidden');
+    resetScreen.classList.add('hidden');
+    appScreen.classList.add('hidden');
+    navBar.classList.add('hidden');
+  }
+
+  // ============================================================
+  // AUTHENTICATION
+  // ============================================================
+
   if (authToggleBtn) {
-    authToggleBtn.addEventListener('click', (e) => {
-      e.preventDefault();
+    authToggleBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+
       isSignUp = !isSignUp;
-      authAlert.classList.add('hidden');
+      setAlert(authAlert, '');
+
       if (isSignUp) {
         authTitle.textContent = 'Create an Account';
         authSubmitBtn.textContent = 'Sign Up';
@@ -71,10 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle Email & Password Login / Signup
   if (authForm) {
-    authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    authForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
       const email = authEmail.value.trim();
       const password = authPassword.value;
 
@@ -88,133 +238,212 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         if (isSignUp) {
-          const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: { emailRedirectTo: window.location.origin + window.location.pathname },
-          });
+          const { data, error } =
+            await supabaseClient.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo:
+                  window.location.origin +
+                  window.location.pathname
+              }
+            });
+
           if (error) throw error;
-          // With email confirmation off, Supabase signs the new user in right away
-          // and onAuthStateChange shows the app. Otherwise ask them to sign in.
+
           if (!data.session) {
-            showAlert('Check your email for a confirmation link before signing in. If you already have an account, use Sign In or Forgot password.', 'success');
+            showAlert(
+              'Check your email for a confirmation link before signing in. ' +
+              'If you already have an account, use Sign In or Forgot password.',
+              'success'
+            );
           }
         } else {
-          const { error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password,
-          });
+          const { error } =
+            await supabaseClient.auth.signInWithPassword({
+              email,
+              password
+            });
+
           if (error) throw error;
-          // onAuthStateChange takes it from here (no page reload needed)
         }
-      } catch (err) {
-        showAlert(err.message || 'Authentication failed.', 'error');
+      } catch (error) {
+        showAlert(
+          error.message || 'Authentication failed.',
+          'error'
+        );
       } finally {
         authSubmitBtn.disabled = false;
-        authSubmitBtn.textContent = isSignUp ? 'Sign Up' : 'Sign In';
+        authSubmitBtn.textContent =
+          isSignUp ? 'Sign Up' : 'Sign In';
       }
     });
   }
 
-  // Send a recovery link without revealing whether the email exists.
+  // ---------- Forgot password ----------
   if (forgotBtn) {
     forgotBtn.addEventListener('click', async () => {
       const email = authEmail.value.trim();
+
       if (!email) {
-        showAlert('Enter your email address above, then click Forgot password again.', 'error');
+        showAlert(
+          'Enter your email address above, then click Forgot password again.',
+          'error'
+        );
         authEmail.focus();
         return;
       }
+
       forgotBtn.disabled = true;
+
       try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + window.location.pathname,
-        });
+        const { error } =
+          await supabaseClient.auth.resetPasswordForEmail(
+            email,
+            {
+              redirectTo:
+                window.location.origin +
+                window.location.pathname
+            }
+          );
+
         if (error) throw error;
-        showAlert('If this email has an account, a password reset link will arrive shortly. Check your inbox and spam folder.', 'success');
-      } catch (err) {
-        showAlert(err.message || 'Could not request a password reset.', 'error');
+
+        showAlert(
+          'If this email has an account, a password reset link ' +
+          'will arrive shortly. Check your inbox and spam folder.',
+          'success'
+        );
+      } catch (error) {
+        showAlert(
+          error.message || 'Could not request a password reset.',
+          'error'
+        );
       } finally {
         forgotBtn.disabled = false;
       }
     });
   }
 
+  // ---------- Password reset ----------
   if (resetForm) {
-    resetForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    resetForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
       if (resetPassword.value.length < 6) {
-        setAlert(resetAlert, 'Use a password with at least 6 characters.', 'error');
+        setAlert(
+          resetAlert,
+          'Use a password with at least 6 characters.',
+          'error'
+        );
         return;
       }
+
       if (resetPassword.value !== resetConfirm.value) {
-        setAlert(resetAlert, 'Passwords do not match.', 'error');
+        setAlert(
+          resetAlert,
+          'Passwords do not match.',
+          'error'
+        );
         return;
       }
+
       resetSubmit.disabled = true;
+
       try {
-        const { error } = await supabaseClient.auth.updateUser({ password: resetPassword.value });
+        const { error } =
+          await supabaseClient.auth.updateUser({
+            password: resetPassword.value
+          });
+
         if (error) throw error;
+
         isPasswordRecovery = false;
-        resetScreen.classList.add('hidden');
         resetForm.reset();
-        await supabaseClient.auth.signOut();
-        showAlert('Password updated! Sign in using your new password.', 'success');
-      } catch (err) {
-        setAlert(resetAlert, err.message || 'Could not update password.', 'error');
+
+        const { error: signOutError } =
+          await supabaseClient.auth.signOut();
+
+        if (signOutError) throw signOutError;
+
+        showSignedOut();
+
+        showAlert(
+          'Password updated! Sign in using your new password.',
+          'success'
+        );
+      } catch (error) {
+        setAlert(
+          resetAlert,
+          error.message || 'Could not update password.',
+          'error'
+        );
       } finally {
         resetSubmit.disabled = false;
       }
     });
   }
 
-  // Handle GitHub OAuth Button
+  // ---------- GitHub OAuth ----------
   if (githubBtn) {
     githubBtn.addEventListener('click', async () => {
       githubBtn.disabled = true;
+
       try {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
-          provider: 'github',
-          options: {
-            redirectTo: window.location.origin + window.location.pathname,
-          },
-        });
+        const { error } =
+          await supabaseClient.auth.signInWithOAuth({
+            provider: 'github',
+            options: {
+              redirectTo:
+                window.location.origin +
+                window.location.pathname
+            }
+          });
+
         if (error) throw error;
-        // The browser is sent to GitHub, then back here, signed in.
-      } catch (err) {
-        showAlert(err.message || 'GitHub sign-in failed.', 'error');
+      } catch (error) {
+        showAlert(
+          error.message || 'GitHub sign-in failed.',
+          'error'
+        );
         githubBtn.disabled = false;
       }
     });
   }
 
-  // Handle Sign Out
+  // ---------- Sign out ----------
   if (signOutBtn) {
     signOutBtn.addEventListener('click', async () => {
       const { error } = await supabaseClient.auth.signOut();
+
       if (error) {
-        showAlert(error.message || 'Sign out failed.', 'error');
+        setAlert(
+          taskAlert,
+          error.message || 'Sign out failed.',
+          'error'
+        );
       }
     });
   }
 
-  // Get the best display name for a user: GitHub nickname first, then email
-  function getDisplayName(user) {
-    const meta = user.user_metadata || {};
-    return (
-      meta.user_name ||
-      meta.preferred_username ||
-      meta.name ||
-      meta.full_name ||
-      user.email ||
-      'User'
-    );
-  }
+  function showSignedOut() {
+    sessionVersion++;
+    currentUser = null;
+    currentBgPath = null;
+    tasks = [];
+    tasksLoading = false;
+    taskBusy = false;
 
-  // Get profile picture (GitHub avatar) if the user has one
-  function getAvatarUrl(user) {
-    const meta = user.user_metadata || {};
-    return meta.avatar_url || meta.picture || '';
+    document.body.style.backgroundImage = '';
+
+    if (taskModal) closeTaskModal();
+
+    hideAllScreens();
+    authScreen.classList.remove('hidden');
+
+    if (githubBtn) githubBtn.disabled = false;
+
+    renderTasks();
   }
 
   function showSignedIn(user, username) {
@@ -228,6 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       userAvatar.src = avatar;
       userAvatar.classList.remove('hidden');
       userAvatarFallback.classList.add('hidden');
+
       welcomeAvatar.src = avatar;
       welcomeAvatar.classList.remove('hidden');
     } else {
@@ -236,166 +466,1023 @@ document.addEventListener('DOMContentLoaded', () => {
       welcomeAvatar.classList.add('hidden');
     }
 
-    authScreen.classList.add('hidden');
-    usernameScreen.classList.add('hidden');
+    hideAllScreens();
+
     navBar.classList.remove('hidden');
     appScreen.classList.remove('hidden');
+
+    refreshIcons();
   }
 
-  function showSignedOut() {
-    currentUser = null;
-    currentBgPath = null;
-    document.body.style.backgroundImage = '';
-    usernameScreen.classList.add('hidden');
-    navBar.classList.add('hidden');
-    appScreen.classList.add('hidden');
-    authScreen.classList.remove('hidden');
-    if (githubBtn) githubBtn.disabled = false;
-  }
-
-  // Show the right screen whenever sign-in state changes (also runs on page load / refresh)
+  // ---------- Supabase auth events ----------
   supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'PASSWORD_RECOVERY') isPasswordRecovery = true;
+    if (event === 'PASSWORD_RECOVERY') {
+      isPasswordRecovery = true;
+    }
+
     if (isPasswordRecovery && session) {
+      sessionVersion++;
       currentUser = session.user;
-      authScreen.classList.add('hidden');
-      usernameScreen.classList.add('hidden');
-      appScreen.classList.add('hidden');
-      navBar.classList.add('hidden');
+      tasks = [];
+
+      hideAllScreens();
       resetScreen.classList.remove('hidden');
-      if (window.location.hash || window.location.search) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+
+      cleanAuthUrl();
       return;
     }
+
     if (session && session.user) {
-      // Load once per sign-in (token refreshes fire this event too)
-      if (!currentUser || currentUser.id !== session.user.id) {
+      if (
+        !currentUser ||
+        currentUser.id !== session.user.id
+      ) {
+        sessionVersion++;
         currentUser = session.user;
-        setTimeout(() => loadUser(session.user), 0);
+
+        const version = sessionVersion;
+
+        setTimeout(() => {
+          loadUser(session.user, version);
+        }, 0);
       }
-      // Clean the sign-in tokens/codes out of the address bar after returning from GitHub
-      if (window.location.hash || window.location.search) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Let Supabase finish processing recovery redirects.
+      if (event !== 'INITIAL_SESSION') {
+        cleanAuthUrl();
       }
     } else {
       showSignedOut();
     }
   });
 
-  // If GitHub sent us back with an error, show it on the page
+  // ---------- OAuth return errors ----------
   (function showReturnError() {
-    const params = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, '')
+    );
+
     const message =
-      params.get('error_description') || hashParams.get('error_description');
+      params.get('error_description') ||
+      hashParams.get('error_description');
+
     if (message) {
-      showAlert(message.replace(/\+/g, ' '), 'error');
+      showAlert(
+        message.replace(/\+/g, ' '),
+        'error'
+      );
     }
   })();
 
-  function showAlert(message, type) {
-    if (!authAlert) return;
-    authAlert.textContent = message;
-    authAlert.className = `alert ${type === 'error' ? 'alert-error' : 'alert-success'}`;
-    authAlert.classList.remove('hidden');
-  }
+  // ============================================================
+  // USERNAME SETUP
+  // ============================================================
 
-  // ---------- Username setup ----------
-  function setAlert(el, message, type) {
-    if (!el) return;
-    if (!message) {
-      el.className = 'alert hidden';
-      return;
-    }
-    el.textContent = message;
-    el.className = `alert ${type === 'error' ? 'alert-error' : 'alert-success'}`;
-  }
+  async function loadUser(user, version) {
+    const { data: profile, error } =
+      await supabaseClient
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .maybeSingle();
 
-  async function loadUser(user) {
-    const { data: profile, error } = await supabaseClient
-      .from('profiles')
-      .select('username')
-      .eq('id', user.id)
-      .maybeSingle();
-    // Ignore results from an earlier session after sign-out or account switch.
-    if (!currentUser || currentUser.id !== user.id) return;
+    if (!isCurrentSession(user.id, version)) return;
+    if (isPasswordRecovery) return;
+
     if (error) {
-      // A failed profile lookup must not bypass username setup.
-      authScreen.classList.add('hidden');
-      appScreen.classList.add('hidden');
-      navBar.classList.add('hidden');
+      hideAllScreens();
+
       usernameScreen.classList.remove('hidden');
       usernameInput.disabled = true;
       usernameBtn.disabled = true;
-      setAlert(usernameAlert, 'Could not load your profile: ' + error.message + '. Please sign out and try again.', 'error');
+
+      setAlert(
+        usernameAlert,
+        'Could not load your profile: ' +
+        error.message +
+        '. Please sign out and try again.',
+        'error'
+      );
+
       return;
     }
+
     usernameInput.disabled = false;
     usernameBtn.disabled = false;
     setAlert(usernameAlert, '');
+
     if (!profile) {
-      authScreen.classList.add('hidden');
-      appScreen.classList.add('hidden');
-      navBar.classList.add('hidden');
+      hideAllScreens();
+
       usernameScreen.classList.remove('hidden');
       usernameInput.focus();
       return;
     }
+
     showSignedIn(user, profile.username);
-    await applySavedBackground();
-    await loadBackgrounds();
+
+    // Load independent features without one failure
+    // preventing the others from starting.
+    await Promise.allSettled([
+      loadTasks(),
+      applySavedBackground(),
+      loadBackgrounds()
+    ]);
   }
 
   if (usernameForm) {
-    usernameForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    usernameForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!currentUser) return;
+
       const username = usernameInput.value.trim();
+
       if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
-        setAlert(usernameAlert, 'Use 3 to 20 characters: letters, numbers and underscores only.', 'error');
+        setAlert(
+          usernameAlert,
+          'Use 3 to 20 characters: letters, numbers and underscores only.',
+          'error'
+        );
         return;
       }
+
       usernameBtn.disabled = true;
       usernameBtn.textContent = 'Saving...';
+
+      const user = currentUser;
+      const version = sessionVersion;
+
       const { error } = await supabaseClient
         .from('profiles')
-        .insert({ id: currentUser.id, username: username });
+        .insert({
+          id: user.id,
+          username
+        });
+
+      if (!isCurrentSession(user.id, version)) return;
+
       usernameBtn.disabled = false;
       usernameBtn.textContent = 'Save username';
+
       if (error) {
         if (error.code === '23505') {
-          setAlert(usernameAlert, 'That username is taken. Try another one.', 'error');
+          setAlert(
+            usernameAlert,
+            'That username is taken. Try another one.',
+            'error'
+          );
         } else {
-          setAlert(usernameAlert, 'Could not save your username: ' + error.message, 'error');
+          setAlert(
+            usernameAlert,
+            'Could not save your username: ' +
+            error.message,
+            'error'
+          );
         }
         return;
       }
+
       setAlert(usernameAlert, '');
-      showSignedIn(currentUser, username);
-      await applySavedBackground();
-      await loadBackgrounds();
+      showSignedIn(user, username);
+
+      await Promise.allSettled([
+        loadTasks(),
+        applySavedBackground(),
+        loadBackgrounds()
+      ]);
     });
   }
 
   if (usernameSignOutBtn) {
-    usernameSignOutBtn.addEventListener('click', () => supabaseClient.auth.signOut());
+    usernameSignOutBtn.addEventListener('click', async () => {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        setAlert(
+          usernameAlert,
+          error.message || 'Sign out failed.',
+          'error'
+        );
+      }
+    });
   }
 
-  // ---------- Backgrounds (private bucket, signed URLs) ----------
+  // ============================================================
+  // TASK DASHBOARD
+  // ============================================================
+
+  function taskPriorityRank(priority) {
+    const value = String(priority || '').toLowerCase();
+
+    if (value === 'high') return 3;
+    if (value === 'medium') return 2;
+    if (value === 'low') return 1;
+
+    return 0;
+  }
+
+  function normalizePriority(priority) {
+    const value = String(priority || '').toLowerCase();
+
+    if (value === 'high') return 'High';
+    if (value === 'low') return 'Low';
+
+    return 'Medium';
+  }
+
+  function formatTaskDate(value) {
+    if (!value) return '';
+
+    // Parse date-only strings locally to avoid timezone shifts.
+    const parts = value.split('-').map(Number);
+
+    if (parts.length !== 3) return value;
+
+    const date = new Date(
+      parts[0],
+      parts[1] - 1,
+      parts[2]
+    );
+
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  function localToday() {
+    const date = new Date();
+
+    const year = date.getFullYear();
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, '0');
+
+    const day = String(
+      date.getDate()
+    ).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function isOverdue(task) {
+    return (
+      !task.is_completed &&
+      task.due_date &&
+      task.due_date < localToday()
+    );
+  }
+
+  function getFilteredTasks() {
+    const filter = taskFilter ? taskFilter.value : 'all';
+    const sort = taskSort ? taskSort.value : 'newest';
+
+    let result = tasks.filter((task) => {
+      if (filter === 'active') {
+        return !task.is_completed;
+      }
+
+      if (filter === 'completed') {
+        return task.is_completed;
+      }
+
+      if (filter === 'pinned') {
+        return task.is_pinned;
+      }
+
+      return true;
+    });
+
+    result = [...result];
+
+    result.sort((a, b) => {
+      // Pinned tasks stay first.
+      if (Boolean(a.is_pinned) !== Boolean(b.is_pinned)) {
+        return a.is_pinned ? -1 : 1;
+      }
+
+      if (sort === 'priority') {
+        const difference =
+          taskPriorityRank(b.priority) -
+          taskPriorityRank(a.priority);
+
+        if (difference !== 0) return difference;
+      }
+
+      if (sort === 'due') {
+        if (!a.due_date && b.due_date) return 1;
+        if (a.due_date && !b.due_date) return -1;
+
+        if (a.due_date && b.due_date) {
+          const difference =
+            a.due_date.localeCompare(b.due_date);
+
+          if (difference !== 0) return difference;
+        }
+      }
+
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+
+      if (sort === 'oldest') {
+        return aTime - bTime;
+      }
+
+      return bTime - aTime;
+    });
+
+    return result;
+  }
+
+  function updateTaskStats() {
+    const total = tasks.length;
+
+    const completed = tasks.filter(
+      (task) => task.is_completed
+    ).length;
+
+    const remaining = total - completed;
+
+    const percentage = total
+      ? Math.round((completed / total) * 100)
+      : 0;
+
+    taskTotalCount.textContent = total;
+    taskCompletedCount.textContent = completed;
+    taskRemainingCount.textContent = remaining;
+
+    taskProgressLabel.textContent = percentage + '%';
+    taskProgressBar.style.width = percentage + '%';
+
+    taskProgressTrack.setAttribute(
+      'aria-valuenow',
+      String(percentage)
+    );
+  }
+
+  function createIcon(name, className = 'w-4 h-4') {
+    const icon = document.createElement('i');
+
+    icon.setAttribute('data-lucide', name);
+    icon.className = className;
+
+    return icon;
+  }
+
+  function createActionButton(label, iconName, onClick) {
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'task-action-btn';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+
+    button.appendChild(createIcon(iconName));
+
+    button.addEventListener('click', onClick);
+
+    return button;
+  }
+
+  function createTaskCard(task) {
+    const card = document.createElement('article');
+
+    card.className =
+      'task-card' +
+      (task.is_completed ? ' task-card-completed' : '');
+
+    const outer = document.createElement('div');
+    outer.className = 'flex items-start gap-3';
+
+    // ---------- Completion checkbox ----------
+    const checkbox = document.createElement('input');
+
+    checkbox.type = 'checkbox';
+    checkbox.checked = Boolean(task.is_completed);
+    checkbox.className =
+      'mt-1 w-5 h-5 accent-indigo-600 cursor-pointer shrink-0';
+
+    checkbox.setAttribute(
+      'aria-label',
+      'Mark ' + task.title +
+      (task.is_completed ? ' incomplete' : ' completed')
+    );
+
+    checkbox.disabled = taskBusy;
+
+    checkbox.addEventListener('change', async () => {
+      await toggleTaskCompleted(task, checkbox.checked);
+    });
+
+    outer.appendChild(checkbox);
+
+    // ---------- Main task content ----------
+    const content = document.createElement('div');
+    content.className = 'flex-1 min-w-0';
+
+    const heading = document.createElement('div');
+    heading.className =
+      'flex flex-wrap items-center gap-2 mb-2';
+
+    if (task.is_pinned) {
+      const pin = createIcon(
+        'pin',
+        'w-4 h-4 text-amber-500 shrink-0'
+      );
+
+      pin.setAttribute('aria-label', 'Pinned task');
+      heading.appendChild(pin);
+    }
+
+    const title = document.createElement('h4');
+
+    title.className =
+      'task-title text-sm sm:text-base font-bold text-slate-900 break-words';
+
+    // textContent prevents task titles from injecting HTML.
+    title.textContent = task.title;
+
+    heading.appendChild(title);
+
+    const priority = normalizePriority(task.priority);
+
+    const badge = document.createElement('span');
+
+    badge.className =
+      'text-xs font-semibold px-2 py-1 rounded-full ' +
+      'priority-' +
+      priority.toLowerCase();
+
+    badge.textContent = priority;
+
+    heading.appendChild(badge);
+
+    if (task.is_completed) {
+      const done = document.createElement('span');
+
+      done.className =
+        'text-xs font-semibold px-2 py-1 rounded-full ' +
+        'bg-green-100 text-green-700';
+
+      done.textContent = 'Completed';
+
+      heading.appendChild(done);
+    }
+
+    content.appendChild(heading);
+
+    // ---------- Task dates ----------
+    const dates = document.createElement('div');
+
+    dates.className =
+      'flex flex-wrap items-center gap-x-4 gap-y-1 ' +
+      'text-xs text-slate-500';
+
+    if (task.start_date) {
+      const start = document.createElement('span');
+
+      start.textContent =
+        'Starts: ' + formatTaskDate(task.start_date);
+
+      dates.appendChild(start);
+    }
+
+    if (task.due_date) {
+      const due = document.createElement('span');
+
+      due.textContent =
+        'Due: ' + formatTaskDate(task.due_date);
+
+      if (isOverdue(task)) {
+        due.className = 'text-red-600 font-semibold';
+        due.textContent += ' (Overdue)';
+      }
+
+      dates.appendChild(due);
+    }
+
+    if (dates.children.length) {
+      content.appendChild(dates);
+    }
+
+    outer.appendChild(content);
+
+    // ---------- Task action buttons ----------
+    const actions = document.createElement('div');
+
+    actions.className =
+      'flex flex-wrap items-center gap-1 shrink-0';
+
+    const pinButton = createActionButton(
+      task.is_pinned ? 'Unpin task' : 'Pin task',
+      task.is_pinned ? 'pin-off' : 'pin',
+      () => toggleTaskPinned(task)
+    );
+
+    const editButton = createActionButton(
+      'Edit task',
+      'pencil',
+      () => openEditTaskModal(task)
+    );
+
+    const deleteButton = createActionButton(
+      'Delete task',
+      'trash-2',
+      () => deleteTask(task)
+    );
+
+    deleteButton.classList.add('hover:text-red-600');
+
+    pinButton.disabled = taskBusy;
+    editButton.disabled = taskBusy;
+    deleteButton.disabled = taskBusy;
+
+    actions.append(
+      pinButton,
+      editButton,
+      deleteButton
+    );
+
+    outer.appendChild(actions);
+    card.appendChild(outer);
+
+    return card;
+  }
+
+  function renderTasks() {
+    if (!taskList) return;
+
+    updateTaskStats();
+
+    taskLoading.classList.toggle(
+      'hidden',
+      !tasksLoading
+    );
+
+    taskList.replaceChildren();
+
+    if (tasksLoading) {
+      taskEmpty.classList.add('hidden');
+      return;
+    }
+
+    const visibleTasks = getFilteredTasks();
+
+    taskEmpty.classList.toggle(
+      'hidden',
+      visibleTasks.length > 0
+    );
+
+    visibleTasks.forEach((task) => {
+      taskList.appendChild(createTaskCard(task));
+    });
+
+    refreshIcons();
+  }
+
+  async function loadTasks() {
+    if (!currentUser) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
+    tasksLoading = true;
+    setAlert(taskAlert, '');
+    renderTasks();
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .select(TASK_COLUMNS)
+        .eq('user_id', userId)
+        .order('created_at', {
+          ascending: false
+        });
+
+      if (!isCurrentSession(userId, version)) return;
+
+      if (error) throw error;
+
+      tasks = data || [];
+    } catch (error) {
+      if (!isCurrentSession(userId, version)) return;
+
+      tasks = [];
+
+      setAlert(
+        taskAlert,
+        'Could not load tasks: ' +
+        (error.message || 'Unknown error'),
+        'error'
+      );
+    } finally {
+      if (isCurrentSession(userId, version)) {
+        tasksLoading = false;
+        renderTasks();
+      }
+    }
+  }
+
+  // ---------- Task modal ----------
+  function openTaskModal() {
+    if (!currentUser || taskBusy) return;
+
+    taskForm.reset();
+    taskEditId.value = '';
+    taskPriority.value = 'Medium';
+    taskPinned.checked = false;
+
+    taskModalTitle.textContent = 'Create a Task';
+    taskSaveBtn.textContent = 'Save Task';
+
+    setAlert(taskFormAlert, '');
+
+    taskModal.classList.remove('hidden');
+
+    taskTitleInput.focus();
+  }
+
+  function openEditTaskModal(task) {
+    if (!currentUser || taskBusy) return;
+
+    taskForm.reset();
+
+    taskEditId.value = task.id;
+    taskTitleInput.value = task.title || '';
+    taskStartDate.value = task.start_date || '';
+    taskDueDate.value = task.due_date || '';
+    taskPriority.value = normalizePriority(task.priority);
+    taskPinned.checked = Boolean(task.is_pinned);
+
+    taskModalTitle.textContent = 'Edit Task';
+    taskSaveBtn.textContent = 'Save Changes';
+
+    setAlert(taskFormAlert, '');
+
+    taskModal.classList.remove('hidden');
+
+    taskTitleInput.focus();
+  }
+
+  function closeTaskModal() {
+    if (!taskModal) return;
+
+    taskModal.classList.add('hidden');
+
+    if (taskForm) taskForm.reset();
+
+    setAlert(taskFormAlert, '');
+  }
+
+  if (taskAddBtn) {
+    taskAddBtn.addEventListener('click', openTaskModal);
+  }
+
+  if (taskModalClose) {
+    taskModalClose.addEventListener(
+      'click',
+      closeTaskModal
+    );
+  }
+
+  if (taskCancelBtn) {
+    taskCancelBtn.addEventListener(
+      'click',
+      closeTaskModal
+    );
+  }
+
+  if (taskModal) {
+    taskModal.addEventListener('click', (event) => {
+      if (event.target === taskModal && !taskBusy) {
+        closeTaskModal();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (
+      event.key === 'Escape' &&
+      taskModal &&
+      !taskModal.classList.contains('hidden') &&
+      !taskBusy
+    ) {
+      closeTaskModal();
+    }
+  });
+
+  // ---------- Create or edit task ----------
+  if (taskForm) {
+    taskForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!currentUser || taskBusy) return;
+
+      const title = taskTitleInput.value.trim();
+      const startDate = taskStartDate.value || null;
+      const dueDate = taskDueDate.value || null;
+      const priority = normalizePriority(
+        taskPriority.value
+      );
+      const pinned = taskPinned.checked;
+      const editId = taskEditId.value;
+
+      if (!title) {
+        setAlert(
+          taskFormAlert,
+          'Please enter a task title.',
+          'error'
+        );
+        return;
+      }
+
+      if (title.length > 200) {
+        setAlert(
+          taskFormAlert,
+          'Task titles must be 200 characters or less.',
+          'error'
+        );
+        return;
+      }
+
+      if (
+        startDate &&
+        dueDate &&
+        dueDate < startDate
+      ) {
+        setAlert(
+          taskFormAlert,
+          'Due date cannot be earlier than start date.',
+          'error'
+        );
+        return;
+      }
+
+      const userId = currentUser.id;
+      const version = sessionVersion;
+
+      const payload = {
+        title,
+        start_date: startDate,
+        due_date: dueDate,
+        priority,
+        is_pinned: pinned
+      };
+
+      taskBusy = true;
+      taskSaveBtn.disabled = true;
+      taskSaveBtn.textContent = 'Saving...';
+
+      setAlert(taskFormAlert, '');
+
+      try {
+        let response;
+
+        if (editId) {
+          // Only update a task belonging to this user.
+          response = await supabaseClient
+            .from('tasks')
+            .update(payload)
+            .eq('id', editId)
+            .eq('user_id', userId)
+            .select('id');
+        } else {
+          response = await supabaseClient
+            .from('tasks')
+            .insert({
+              ...payload,
+              user_id: userId,
+              is_completed: false
+            })
+            .select('id');
+        }
+
+        if (!isCurrentSession(userId, version)) return;
+
+        if (response.error) throw response.error;
+
+        if (!response.data || response.data.length !== 1) {
+          throw new Error(
+            'Task was not saved. Check your database permissions.'
+          );
+        }
+
+        closeTaskModal();
+
+        setAlert(
+          taskAlert,
+          editId
+            ? 'Task updated successfully!'
+            : 'Task created successfully!',
+          'success'
+        );
+
+        await loadTasks();
+      } catch (error) {
+        if (!isCurrentSession(userId, version)) return;
+
+        setAlert(
+          taskFormAlert,
+          error.message || 'Could not save task.',
+          'error'
+        );
+      } finally {
+        taskBusy = false;
+        taskSaveBtn.disabled = false;
+        taskSaveBtn.textContent =
+          editId ? 'Save Changes' : 'Save Task';
+      }
+    });
+  }
+
+  // ---------- Complete / uncomplete task ----------
+  async function toggleTaskCompleted(task, completed) {
+    if (!currentUser || taskBusy) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
+    taskBusy = true;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .update({
+          is_completed: completed,
+          completed_at: completed
+            ? new Date().toISOString()
+            : null
+        })
+        .eq('id', task.id)
+        .eq('user_id', userId)
+        .select('id');
+
+      if (!isCurrentSession(userId, version)) return;
+
+      if (error) throw error;
+
+      if (!data || data.length !== 1) {
+        throw new Error('Task could not be updated.');
+      }
+
+      await loadTasks();
+    } catch (error) {
+      if (!isCurrentSession(userId, version)) return;
+
+      setAlert(
+        taskAlert,
+        error.message || 'Could not update task.',
+        'error'
+      );
+
+      await loadTasks();
+    } finally {
+      taskBusy = false;
+    }
+  }
+
+  // ---------- Pin / unpin task ----------
+  async function toggleTaskPinned(task) {
+    if (!currentUser || taskBusy) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
+    taskBusy = true;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .update({
+          is_pinned: !task.is_pinned
+        })
+        .eq('id', task.id)
+        .eq('user_id', userId)
+        .select('id');
+
+      if (!isCurrentSession(userId, version)) return;
+
+      if (error) throw error;
+
+      if (!data || data.length !== 1) {
+        throw new Error('Task could not be pinned.');
+      }
+
+      await loadTasks();
+    } catch (error) {
+      if (!isCurrentSession(userId, version)) return;
+
+      setAlert(
+        taskAlert,
+        error.message || 'Could not pin task.',
+        'error'
+      );
+
+      await loadTasks();
+    } finally {
+      taskBusy = false;
+    }
+  }
+
+  // ---------- Delete task ----------
+  async function deleteTask(task) {
+    if (!currentUser || taskBusy) return;
+
+    const confirmed = window.confirm(
+      'Delete "' + task.title + '"?\n\n' +
+      'This cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
+    taskBusy = true;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .delete()
+        .eq('id', task.id)
+        .eq('user_id', userId)
+        .select('id');
+
+      if (!isCurrentSession(userId, version)) return;
+
+      if (error) throw error;
+
+      if (!data || data.length !== 1) {
+        throw new Error('Task could not be deleted.');
+      }
+
+      await loadTasks();
+    } catch (error) {
+      if (!isCurrentSession(userId, version)) return;
+
+      setAlert(
+        taskAlert,
+        error.message || 'Could not delete task.',
+        'error'
+      );
+    } finally {
+      taskBusy = false;
+    }
+  }
+
+  // ---------- Filtering and sorting ----------
+  if (taskFilter) {
+    taskFilter.addEventListener('change', renderTasks);
+  }
+
+  if (taskSort) {
+    taskSort.addEventListener('change', renderTasks);
+  }
+
+  // ============================================================
+  // BACKGROUNDS
+  // ============================================================
+
   function formatSize(bytes) {
-    if (bytes === undefined || bytes === null) return '';
-    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
-    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    if (bytes === undefined || bytes === null) {
+      return '';
+    }
+
+    if (bytes < 1024 * 1024) {
+      return (
+        Math.max(1, Math.round(bytes / 1024)) +
+        ' KB'
+      );
+    }
+
+    return (
+      (bytes / 1024 / 1024).toFixed(1) +
+      ' MB'
+    );
   }
 
   async function getSignedUrl(path) {
-    const { data, error } = await supabaseClient.storage.from(BUCKET).createSignedUrl(path, 3600);
+    const { data, error } =
+      await supabaseClient.storage
+        .from(BUCKET)
+        .createSignedUrl(path, 3600);
+
     return error ? null : data.signedUrl;
   }
 
   function setBackground(path, url) {
     currentBgPath = path;
-    document.body.style.backgroundImage = `url("${url}")`;
+
+    document.body.style.backgroundImage =
+      `url("${url}")`;
   }
 
   function clearBackground() {
@@ -404,129 +1491,336 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function applySavedBackground() {
+    if (!currentUser) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
     clearBackground();
-    const { data } = await supabaseClient
+
+    const { data, error } = await supabaseClient
       .from('user_settings')
       .select('background_image_url')
-      .eq('user_id', currentUser.id)
+      .eq('user_id', userId)
       .limit(1);
-    const path = data && data[0] && data[0].background_image_url;
+
+    if (!isCurrentSession(userId, version)) return;
+
+    if (error) {
+      setAlert(
+        bgAlert,
+        'Could not load background settings: ' +
+        error.message,
+        'error'
+      );
+      return;
+    }
+
+    const path =
+      data &&
+      data[0] &&
+      data[0].background_image_url;
+
     if (!path) return;
+
     const url = await getSignedUrl(path);
+
+    if (!isCurrentSession(userId, version)) return;
+
     if (url) setBackground(path, url);
   }
 
-  // Saves the image's storage path (not the expiring link) in user_settings
   async function saveBackgroundSetting(path) {
-    const { data: rows, error: findError } = await supabaseClient
-      .from('user_settings')
-      .select('id')
-      .eq('user_id', currentUser.id)
-      .limit(1);
+    if (!currentUser) {
+      return new Error('Please sign in again.');
+    }
+
+    const { data: rows, error: findError } =
+      await supabaseClient
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .limit(1);
+
     if (findError) return findError;
+
     const request = rows && rows.length
-      ? supabaseClient.from('user_settings').update({ background_image_url: path }).eq('id', rows[0].id)
-      : supabaseClient.from('user_settings').insert({ id: crypto.randomUUID(), user_id: currentUser.id, background_image_url: path });
+      ? supabaseClient
+          .from('user_settings')
+          .update({
+            background_image_url: path
+          })
+          .eq('id', rows[0].id)
+      : supabaseClient
+          .from('user_settings')
+          .insert({
+            id: crypto.randomUUID(),
+            user_id: currentUser.id,
+            background_image_url: path
+          });
+
     const { error } = await request;
+
     return error;
   }
 
   async function useBackground(path) {
+    if (!currentUser) return;
+
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
     const url = await getSignedUrl(path);
+
+    if (!isCurrentSession(userId, version)) return;
+
     if (!url) {
-      setAlert(bgAlert, 'Could not open that image. Try again.', 'error');
+      setAlert(
+        bgAlert,
+        'Could not open that image. Try again.',
+        'error'
+      );
       return;
     }
+
     const error = await saveBackgroundSetting(path);
+
+    if (!isCurrentSession(userId, version)) return;
+
     if (error) {
-      setAlert(bgAlert, 'Could not save your background: ' + error.message, 'error');
+      setAlert(
+        bgAlert,
+        'Could not save your background: ' +
+        error.message,
+        'error'
+      );
       return;
     }
+
     setBackground(path, url);
-    setAlert(bgAlert, 'Background updated.', 'success');
+
+    setAlert(
+      bgAlert,
+      'Background updated.',
+      'success'
+    );
+
     await loadBackgrounds();
   }
 
   async function removeBackground() {
     if (!currentBgPath) {
-      setAlert(bgAlert, 'No background is set.', 'error');
+      setAlert(
+        bgAlert,
+        'No background is set.',
+        'error'
+      );
       return;
     }
+
     const error = await saveBackgroundSetting(null);
+
     if (error) {
-      setAlert(bgAlert, 'Could not remove your background: ' + error.message, 'error');
+      setAlert(
+        bgAlert,
+        'Could not remove your background: ' +
+        error.message,
+        'error'
+      );
       return;
     }
+
     clearBackground();
-    setAlert(bgAlert, 'Background removed.', 'success');
+
+    setAlert(
+      bgAlert,
+      'Background removed.',
+      'success'
+    );
+
     await loadBackgrounds();
   }
 
   async function deleteBackground(path) {
-    if (!confirm('Delete this image?')) return;
-    const { data, error } = await supabaseClient.storage.from(BUCKET).remove([path]);
+    if (!window.confirm('Delete this image?')) return;
+
+    const { data, error } =
+      await supabaseClient.storage
+        .from(BUCKET)
+        .remove([path]);
+
     if (error || !data || !data.length) {
-      setAlert(bgAlert, error ? 'Could not delete that image: ' + error.message : 'Could not delete that image. The delete rule may be missing.', 'error');
+      setAlert(
+        bgAlert,
+        error
+          ? 'Could not delete that image: ' +
+            error.message
+          : 'Could not delete that image. ' +
+            'The delete rule may be missing.',
+        'error'
+      );
+
       return;
     }
+
     if (path === currentBgPath) {
       await saveBackgroundSetting(null);
       clearBackground();
     }
-    setAlert(bgAlert, 'Image deleted.', 'success');
+
+    setAlert(
+      bgAlert,
+      'Image deleted.',
+      'success'
+    );
+
     await loadBackgrounds();
   }
 
   async function loadBackgrounds() {
-    const { data, error } = await supabaseClient.storage
-      .from(BUCKET)
-      .list(currentUser.id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
-    if (error) {
-      setAlert(bgAlert, 'Could not load your images: ' + error.message, 'error');
-      return;
-    }
-    const files = (data || []).filter((f) => f.id);
-    bgList.innerHTML = '';
-    if (!files.length) {
-      bgList.innerHTML = '<p class="text-sm text-slate-500">No images yet. Click Add file to upload one.</p>';
-      return;
-    }
-    const paths = files.map((f) => `${currentUser.id}/${f.name}`);
-    const { data: signed } = await supabaseClient.storage.from(BUCKET).createSignedUrls(paths, 3600);
+    if (!currentUser) return;
 
-    files.forEach((f, i) => {
-      const path = paths[i];
+    const userId = currentUser.id;
+    const version = sessionVersion;
+
+    const { data, error } =
+      await supabaseClient.storage
+        .from(BUCKET)
+        .list(userId, {
+          limit: 100,
+          sortBy: {
+            column: 'created_at',
+            order: 'desc'
+          }
+        });
+
+    if (!isCurrentSession(userId, version)) return;
+
+    if (error) {
+      setAlert(
+        bgAlert,
+        'Could not load your images: ' +
+        error.message,
+        'error'
+      );
+      return;
+    }
+
+    const files = (data || []).filter(
+      (file) => file.id
+    );
+
+    bgList.replaceChildren();
+
+    if (!files.length) {
+      const empty = document.createElement('p');
+
+      empty.className =
+        'text-sm text-slate-500';
+
+      empty.textContent =
+        'No images yet. Click Add file to upload one.';
+
+      bgList.appendChild(empty);
+      return;
+    }
+
+    const paths = files.map(
+      (file) => `${userId}/${file.name}`
+    );
+
+    const { data: signed } =
+      await supabaseClient.storage
+        .from(BUCKET)
+        .createSignedUrls(paths, 3600);
+
+    if (!isCurrentSession(userId, version)) return;
+
+    files.forEach((file, index) => {
+      const path = paths[index];
+
       const row = document.createElement('div');
-      row.className = 'flex items-center gap-3 p-2 rounded-lg border border-slate-200 bg-white/70';
+
+      row.className =
+        'flex items-center gap-3 p-2 rounded-lg ' +
+        'border border-slate-200 bg-white/70';
 
       const img = document.createElement('img');
-      img.src = signed && signed[i] && signed[i].signedUrl ? signed[i].signedUrl : '';
+
+      img.src =
+        signed &&
+        signed[index] &&
+        signed[index].signedUrl
+          ? signed[index].signedUrl
+          : '';
+
       img.alt = '';
-      img.className = 'w-16 h-12 rounded object-cover bg-slate-200 shrink-0';
+
+      img.className =
+        'w-16 h-12 rounded object-cover ' +
+        'bg-slate-200 shrink-0';
 
       const info = document.createElement('div');
+
       info.className = 'flex-1 min-w-0';
+
       const name = document.createElement('p');
-      name.className = 'text-sm font-semibold text-slate-800 truncate';
-      name.textContent = f.name.replace(/^\d+-/, '');
+
+      name.className =
+        'text-sm font-semibold text-slate-800 truncate';
+
+      name.textContent =
+        file.name.replace(/^\d+-/, '');
+
       const meta = document.createElement('p');
-      meta.className = 'text-xs text-slate-500';
-      meta.textContent = formatSize(f.metadata && f.metadata.size) + (path === currentBgPath ? ' (in use)' : '');
+
+      meta.className =
+        'text-xs text-slate-500';
+
+      meta.textContent =
+        formatSize(file.metadata && file.metadata.size) +
+        (path === currentBgPath ? ' (in use)' : '');
+
       info.append(name, meta);
 
       const useBtn = document.createElement('button');
+
       useBtn.type = 'button';
-      useBtn.className = 'btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold';
+
+      useBtn.className =
+        'btn-primary px-3 py-1.5 rounded-lg ' +
+        'text-xs font-semibold';
+
       useBtn.textContent = 'Use as background';
-      useBtn.addEventListener('click', () => useBackground(path));
+
+      useBtn.addEventListener(
+        'click',
+        () => useBackground(path)
+      );
 
       const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition';
-      delBtn.textContent = 'Delete';
-      delBtn.addEventListener('click', () => deleteBackground(path));
 
-      row.append(img, info, useBtn, delBtn);
+      delBtn.type = 'button';
+
+      delBtn.className =
+        'px-3 py-1.5 rounded-lg text-xs ' +
+        'font-semibold text-red-600 ' +
+        'hover:bg-red-50 transition';
+
+      delBtn.textContent = 'Delete';
+
+      delBtn.addEventListener(
+        'click',
+        () => deleteBackground(path)
+      );
+
+      row.append(
+        img,
+        info,
+        useBtn,
+        delBtn
+      );
+
       bgList.appendChild(row);
     });
   }
@@ -538,70 +1832,262 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function uploadErrorText(xhr) {
-    let msg = '';
-    try { msg = JSON.parse(xhr.responseText).message || ''; } catch (e) { msg = ''; }
-    if (xhr.status === 413 || /exceeded the maximum/i.test(msg)) return 'That file is too big. The limit is 5 MB.';
-    if (/mime type/i.test(msg)) return 'That file type is not allowed. Use a JPG, PNG or GIF.';
-    if (/row-level security/i.test(msg) || xhr.status === 403) return 'Upload blocked: the upload rule for your folder is missing or wrong.';
-    if (/bucket not found/i.test(msg) || xhr.status === 404) return 'Bucket not found. Its name must be exactly "decorations".';
-    return 'Upload failed' + (msg ? ': ' + msg : '. Try again.');
+    let message = '';
+
+    try {
+      message =
+        JSON.parse(xhr.responseText).message || '';
+    } catch (error) {
+      message = '';
+    }
+
+    if (
+      xhr.status === 413 ||
+      /exceeded the maximum/i.test(message)
+    ) {
+      return 'That file is too big. The limit is 5 MB.';
+    }
+
+    if (/mime type/i.test(message)) {
+      return (
+        'That file type is not allowed. ' +
+        'Use a JPG, PNG or GIF.'
+      );
+    }
+
+    if (
+      /row-level security/i.test(message) ||
+      xhr.status === 403
+    ) {
+      return (
+        'Upload blocked: the upload rule ' +
+        'for your folder is missing or wrong.'
+      );
+    }
+
+    if (
+      /bucket not found/i.test(message) ||
+      xhr.status === 404
+    ) {
+      return (
+        'Bucket not found. Its name must be ' +
+        'exactly "decorations".'
+      );
+    }
+
+    return (
+      'Upload failed' +
+      (message ? ': ' + message : '. Try again.')
+    );
   }
 
-  // XMLHttpRequest is used because it reports real upload progress
+  // XMLHttpRequest provides real upload progress.
   async function uploadWithProgress(file, path) {
-    const { data } = await supabaseClient.auth.getSession();
-    if (!data.session) throw new Error('You are signed out. Please sign in again.');
+    const { data } =
+      await supabaseClient.auth.getSession();
+
+    if (!data.session) {
+      throw new Error(
+        'You are signed out. Please sign in again.'
+      );
+    }
+
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`);
-      xhr.setRequestHeader('Authorization', `Bearer ${data.session.access_token}`);
-      xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+
+      xhr.open(
+        'POST',
+        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`
+      );
+
+      xhr.setRequestHeader(
+        'Authorization',
+        `Bearer ${data.session.access_token}`
+      );
+
+      xhr.setRequestHeader(
+        'apikey',
+        SUPABASE_ANON_KEY
+      );
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setProgress(
+            Math.round(
+              (event.loaded / event.total) * 100
+            )
+          );
+        }
       };
+
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error(uploadErrorText(xhr)));
+        if (
+          xhr.status >= 200 &&
+          xhr.status < 300
+        ) {
+          resolve();
+        } else {
+          reject(
+            new Error(uploadErrorText(xhr))
+          );
+        }
       };
-      xhr.onerror = () => reject(new Error('Network problem. Check your internet and try again.'));
+
+      xhr.onerror = () => {
+        reject(
+          new Error(
+            'Network problem. Check your internet and try again.'
+          )
+        );
+      };
+
       const form = new FormData();
+
       form.append('cacheControl', '3600');
       form.append('', file);
+
       setProgress(0);
       xhr.send(form);
     });
   }
 
-  if (addFileBtn) addFileBtn.addEventListener('click', () => fileInput.click());
-  if (bgRemoveBtn) bgRemoveBtn.addEventListener('click', removeBackground);
+  if (addFileBtn) {
+    addFileBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+  }
+
+  if (bgRemoveBtn) {
+    bgRemoveBtn.addEventListener(
+      'click',
+      removeBackground
+    );
+  }
 
   if (fileInput) {
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
+
       fileInput.value = '';
-      if (!file) return;
+
+      if (!file || !currentUser) return;
+
       setAlert(bgAlert, '');
+
       if (!ALLOWED_TYPES.includes(file.type)) {
-        setAlert(bgAlert, 'That file type is not allowed. Use a JPG, PNG or GIF.', 'error');
+        setAlert(
+          bgAlert,
+          'That file type is not allowed. ' +
+          'Use a JPG, PNG or GIF.',
+          'error'
+        );
         return;
       }
+
       if (file.size > MAX_BYTES) {
-        setAlert(bgAlert, `That file is ${formatSize(file.size)}. The limit is 5 MB.`, 'error');
+        setAlert(
+          bgAlert,
+          `That file is ${formatSize(file.size)}. ` +
+          'The limit is 5 MB.',
+          'error'
+        );
         return;
       }
-      const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
-      const path = `${currentUser.id}/${Date.now()}-${safeName}`;
+
+      const userId = currentUser.id;
+      const version = sessionVersion;
+
+      const safeName = file.name.replace(
+        /[^A-Za-z0-9._-]/g,
+        '_'
+      );
+
+      const path =
+        `${userId}/${Date.now()}-${safeName}`;
+
       addFileBtn.disabled = true;
+
       try {
         await uploadWithProgress(file, path);
-        setAlert(bgAlert, 'Image uploaded.', 'success');
+
+        if (!isCurrentSession(userId, version)) return;
+
+        setAlert(
+          bgAlert,
+          'Image uploaded.',
+          'success'
+        );
+
         await loadBackgrounds();
-      } catch (err) {
-        setAlert(bgAlert, err.message, 'error');
+      } catch (error) {
+        if (!isCurrentSession(userId, version)) return;
+
+        setAlert(
+          bgAlert,
+          error.message,
+          'error'
+        );
       } finally {
         addFileBtn.disabled = false;
         bgProgress.classList.add('hidden');
       }
     });
   }
+
+  // ============================================================
+  // NAVIGATION
+  // ============================================================
+
+  function scrollToDashboard() {
+    if (appScreen.classList.contains('hidden')) return;
+
+    appScreen.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }
+
+  if (navDashboardBtn) {
+    navDashboardBtn.addEventListener(
+      'click',
+      scrollToDashboard
+    );
+  }
+
+  if (navDashboardLink) {
+    navDashboardLink.addEventListener(
+      'click',
+      scrollToDashboard
+    );
+  }
+
+  // Archive and account security are later roadmap steps.
+  // Avoid pretending they are already implemented.
+  if (navArchiveBtn) {
+    navArchiveBtn.addEventListener('click', () => {
+      setAlert(
+        taskAlert,
+        'Archive is coming in a later FocusCraft step!',
+        'success'
+      );
+
+      scrollToDashboard();
+    });
+  }
+
+  if (navPasswordBtn) {
+    navPasswordBtn.addEventListener('click', () => {
+      setAlert(
+        taskAlert,
+        'Account security settings are coming in a later FocusCraft step!',
+        'success'
+      );
+
+      scrollToDashboard();
+    });
+  }
+
+  // ---------- Initial dashboard ----------
+  renderTasks();
+  refreshIcons();
 });
