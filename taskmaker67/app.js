@@ -243,11 +243,22 @@ document.addEventListener('DOMContentLoaded', () => {
       .select('username')
       .eq('id', user.id)
       .maybeSingle();
+    // Ignore results from an earlier session after sign-out or account switch.
+    if (!currentUser || currentUser.id !== user.id) return;
     if (error) {
-      showSignedIn(user);
-      setAlert(bgAlert, 'Could not load your profile: ' + error.message, 'error');
+      // A failed profile lookup must not bypass username setup.
+      authScreen.classList.add('hidden');
+      appScreen.classList.add('hidden');
+      navBar.classList.add('hidden');
+      usernameScreen.classList.remove('hidden');
+      usernameInput.disabled = true;
+      usernameBtn.disabled = true;
+      setAlert(usernameAlert, 'Could not load your profile: ' + error.message + '. Please sign out and try again.', 'error');
       return;
     }
+    usernameInput.disabled = false;
+    usernameBtn.disabled = false;
+    setAlert(usernameAlert, '');
     if (!profile) {
       authScreen.classList.add('hidden');
       appScreen.classList.add('hidden');
