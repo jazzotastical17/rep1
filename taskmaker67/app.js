@@ -1434,6 +1434,8 @@ actions.append(
   }
 
   // ---------- Complete / uncomplete task ----------
+  
+  // ---------- Complete / uncomplete task ----------
   async function toggleTaskCompleted(task, completed) {
     if (!currentUser || taskBusy) return;
 
@@ -1443,25 +1445,20 @@ actions.append(
     taskBusy = true;
 
     try {
+      const now = new Date().toISOString();
+
       const { data, error } = await supabaseClient
         .from('tasks')
-        
-.update({
-  is_completed: completed,
-  completed_at: completed
-    ? new Date().toISOString()
-    : null,
-  archived_at: completed
-    ? new Date().toISOString()
-    : null
-})
-
+        .update({
+          is_completed: completed,
+          completed_at: completed ? now : null,
+          archived_at: completed ? now : null
+        })
         .eq('id', task.id)
         .eq('user_id', userId)
         .select('id');
 
       if (!isCurrentSession(userId, version)) return;
-
       if (error) throw error;
 
       if (!data || data.length !== 1) {
@@ -1469,6 +1466,16 @@ actions.append(
       }
 
       await loadTasks();
+
+      if (!isCurrentSession(userId, version)) return;
+
+      if (completed) {
+        setAlert(
+          taskAlert,
+          'Task completed and automatically archived!',
+          'success'
+        );
+      }
     } catch (error) {
       if (!isCurrentSession(userId, version)) return;
 
@@ -1481,6 +1488,11 @@ actions.append(
       await loadTasks();
     } finally {
       taskBusy = false;
+
+      if (isCurrentSession(userId, version)) {
+        renderTasks();
+        renderArchive();
+      }
     }
   }
 
