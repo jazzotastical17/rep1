@@ -8,6 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const authTitle = document.getElementById('auth-title');
   const authAlert = document.getElementById('auth-alert');
   const githubBtn = document.getElementById('github-login-btn');
+  const forgotBtn = document.getElementById('forgot-password-btn');
+  const resetScreen = document.getElementById('reset-screen');
+  const resetForm = document.getElementById('reset-form');
+  const resetPassword = document.getElementById('reset-password');
+  const resetConfirm = document.getElementById('reset-confirm');
+  const resetAlert = document.getElementById('reset-alert');
+  const resetSubmit = document.getElementById('reset-submit-btn');
 
   const authScreen = document.getElementById('auth-screen');
   const appScreen = document.getElementById('app-screen');
@@ -40,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 
   let isSignUp = false;
+  let isPasswordRecovery = false;
   let currentUser = null;
   let currentBgPath = null;
 
@@ -48,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     authToggleBtn.addEventListener('click', (e) => {
       e.preventDefault();
       isSignUp = !isSignUp;
+      authAlert.classList.add('hidden');
       if (isSignUp) {
         authTitle.textContent = 'Create an Account';
         authSubmitBtn.textContent = 'Sign Up';
@@ -82,12 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const { data, error } = await supabaseClient.auth.signUp({
             email: email,
             password: password,
+            options: { emailRedirectTo: window.location.origin + window.location.pathname },
           });
           if (error) throw error;
           // With email confirmation off, Supabase signs the new user in right away
           // and onAuthStateChange shows the app. Otherwise ask them to sign in.
           if (!data.session) {
-            showAlert('Sign up successful! You can now sign in.', 'success');
+            showAlert('Check your email for a confirmation link before signing in. If you already have an account, use Sign In or Forgot password.', 'success');
           }
         } else {
           const { error } = await supabaseClient.auth.signInWithPassword({
@@ -102,6 +112,58 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         authSubmitBtn.disabled = false;
         authSubmitBtn.textContent = isSignUp ? 'Sign Up' : 'Sign In';
+      }
+    });
+  }
+
+  // Send a recovery link without revealing whether the email exists.
+  if (forgotBtn) {
+    forgotBtn.addEventListener('click', async () => {
+      const email = authEmail.value.trim();
+      if (!email) {
+        showAlert('Enter your email address above, then click Forgot password again.', 'error');
+        authEmail.focus();
+        return;
+      }
+      forgotBtn.disabled = true;
+      try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + window.location.pathname,
+        });
+        if (error) throw error;
+        showAlert('If this email has an account, a password reset link will arrive shortly. Check your inbox and spam folder.', 'success');
+      } catch (err) {
+        showAlert(err.message || 'Could not request a password reset.', 'error');
+      } finally {
+        forgotBtn.disabled = false;
+      }
+    });
+  }
+
+  if (resetForm) {
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (resetPassword.value.length < 6) {
+        setAlert(resetAlert, 'Use a password with at least 6 characters.', 'error');
+        return;
+      }
+      if (resetPassword.value !== resetConfirm.value) {
+        setAlert(resetAlert, 'Passwords do not match.', 'error');
+        return;
+      }
+      resetSubmit.disabled = true;
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password: resetPassword.value });
+        if (error) throw error;
+        isPasswordRecovery = false;
+        resetScreen.classList.add('hidden');
+        resetForm.reset();
+        await supabaseClient.auth.signOut();
+        showAlert('Password updated! Sign in using your new password.', 'success');
+      } catch (err) {
+        setAlert(resetAlert, err.message || 'Could not update password.', 'error');
+      } finally {
+        resetSubmit.disabled = false;
       }
     });
   }
@@ -193,6 +255,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Show the right screen whenever sign-in state changes (also runs on page load / refresh)
   supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') isPasswordRecovery = true;
+    if (isPasswordRecovery && session) {
+      currentUser = session.user;
+      authScreen.classList.add('hidden');
+      usernameScreen.classList.add('hidden');
+      appScreen.classList.add('hidden');
+      navBar.classList.add('hidden');
+      resetScreen.classList.remove('hidden');
+      if (window.location.hash || window.location.search) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      return;
+    }
     if (session && session.user) {
       // Load once per sign-in (token refreshes fire this event too)
       if (!currentUser || currentUser.id !== session.user.id) {
