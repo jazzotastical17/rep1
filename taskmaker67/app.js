@@ -16,6 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const githubBtn = document.getElementById('github-login-btn');
   const forgotBtn = document.getElementById('forgot-password-btn');
 
+  // ---------- Step 7: Account security elements ----------
+  const securityScreen = document.getElementById('security-screen');
+  const securityAlert = document.getElementById('security-alert');
+  const securityPasswordForm = document.getElementById('security-password-form');
+  const securityNewPassword = document.getElementById('security-new-password');
+  const securityConfirmPassword = document.getElementById('security-confirm-password');
+  const securityPasswordSubmit = document.getElementById('security-password-submit');
+  const securityBackBtn = document.getElementById('security-back-btn');
+
+
   // ---------- Password recovery elements ----------
   const resetScreen = document.getElementById('reset-screen');
   const resetForm = document.getElementById('reset-form');
@@ -209,6 +219,9 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
   authScreen.classList.add('hidden');
   usernameScreen.classList.add('hidden');
   resetScreen.classList.add('hidden');
+    if (securityScreen) {
+    securityScreen.classList.add('hidden');
+  }
   appScreen.classList.add('hidden');
 
   if (archiveScreen) {
@@ -2641,11 +2654,17 @@ actions.append(
   // STEP 6 - NAVIGATION
   // ============================================================
 
+  
   function scrollToDashboard() {
     if (!currentUser) return;
 
+    if (securityScreen) {
+      securityScreen.classList.add('hidden');
+    }
+
     showTaskView('dashboard');
   }
+
 
   if (navDashboardBtn) {
     navDashboardBtn.addEventListener(
@@ -2684,18 +2703,130 @@ actions.append(
     );
   }
 
-  // Security settings will be implemented in Step 7.
-  if (navPasswordBtn) {
-    navPasswordBtn.addEventListener('click', () => {
-      if (!currentUser) return;
 
+  // ============================================================
+  // STEP 7 - ACCOUNT SECURITY
+  // ============================================================
+
+  function showSecurityScreen() {
+    if (!currentUser || !securityScreen) return;
+
+    appScreen.classList.add('hidden');
+
+    if (archiveScreen) {
+      archiveScreen.classList.add('hidden');
+    }
+
+    securityScreen.classList.remove('hidden');
+
+    setAlert(securityAlert, '');
+
+    if (securityPasswordForm) {
+      securityPasswordForm.reset();
+    }
+
+    refreshIcons();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function leaveSecurityScreen() {
+    if (securityScreen) {
+      securityScreen.classList.add('hidden');
+    }
+
+    if (securityPasswordForm) {
+      securityPasswordForm.reset();
+    }
+
+    if (currentUser) {
       showTaskView('dashboard');
+    }
+  }
 
-      setAlert(
-        taskAlert,
-        'Account security settings are coming in a later FocusCraft step!',
-        'success'
-      );
+  if (navPasswordBtn) {
+    navPasswordBtn.addEventListener('click', showSecurityScreen);
+  }
+
+  if (securityBackBtn) {
+    securityBackBtn.addEventListener('click', leaveSecurityScreen);
+  }
+
+  // Keep the Security screen hidden when navigating elsewhere.
+  if (navDashboardLink) {
+    navDashboardLink.addEventListener('click', leaveSecurityScreen);
+  }
+
+  if (navArchiveBtn) {
+    navArchiveBtn.addEventListener('click', () => {
+      if (securityScreen) {
+        securityScreen.classList.add('hidden');
+      }
+    });
+  }
+
+  if (securityPasswordForm) {
+    securityPasswordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!currentUser || !securityPasswordSubmit) return;
+
+      const password = securityNewPassword.value;
+      const confirmation = securityConfirmPassword.value;
+
+      setAlert(securityAlert, '');
+
+      if (password.length < 8) {
+        setAlert(
+          securityAlert,
+          'Your new password must contain at least 8 characters.',
+          'error'
+        );
+        return;
+      }
+
+      if (password !== confirmation) {
+        setAlert(
+          securityAlert,
+          'Your passwords do not match.',
+          'error'
+        );
+        return;
+      }
+
+      const userId = currentUser.id;
+      const version = sessionVersion;
+
+      securityPasswordSubmit.disabled = true;
+      securityPasswordSubmit.textContent = 'Updating password...';
+
+      try {
+        const { error } = await supabaseClient.auth.updateUser({
+          password
+        });
+
+        if (!isCurrentSession(userId, version)) return;
+
+        if (error) throw error;
+
+        securityPasswordForm.reset();
+
+        setAlert(
+          securityAlert,
+          'Your password has been updated successfully!',
+          'success'
+        );
+      } catch (error) {
+        if (!isCurrentSession(userId, version)) return;
+
+        setAlert(
+          securityAlert,
+          error.message || 'Could not update your password.',
+          'error'
+        );
+      } finally {
+        securityPasswordSubmit.disabled = false;
+        securityPasswordSubmit.textContent = 'Update Password';
+      }
     });
   }
 
