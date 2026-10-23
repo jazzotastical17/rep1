@@ -16,6 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const githubBtn = document.getElementById('github-login-btn');
   const forgotBtn = document.getElementById('forgot-password-btn');
 
+  // ---------- Step 8: Appearance elements ----------
+  const appearanceScreen = document.getElementById('appearance-screen');
+  const navAppearanceBtn = document.getElementById('nav-appearance-btn');
+  const appearanceAlert = document.getElementById('appearance-alert');
+  const appearanceColorOptions = document.getElementById('appearance-color-options');
+  const appearanceFont = document.getElementById('appearance-font');
+  const appearanceResetBtn = document.getElementById('appearance-reset-btn');
+  const appearanceBackBtn = document.getElementById('appearance-back-btn');
+
   // ---------- Step 7: Account security elements ----------
   const securityScreen = document.getElementById('security-screen');
   const securityAlert = document.getElementById('security-alert');
@@ -219,14 +228,14 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
   authScreen.classList.add('hidden');
   usernameScreen.classList.add('hidden');
   resetScreen.classList.add('hidden');
+  
     if (securityScreen) {
     securityScreen.classList.add('hidden');
   }
   appScreen.classList.add('hidden');
-
-  if (archiveScreen) {
-    archiveScreen.classList.add('hidden');
-  }
+if (appearanceScreen) {
+  appearanceScreen.classList.add('hidden');
+}
 
   navBar.classList.add('hidden');
 }
@@ -2829,6 +2838,242 @@ actions.append(
       }
     });
   }
+
+
+  // ============================================================
+  // STEP 8 - APPEARANCE CUSTOMIZATION
+  // ============================================================
+
+  const APPEARANCE_STORAGE_KEY = 'focuscraft-appearance-v1';
+
+  const DEFAULT_APPEARANCE = {
+    accent: '#4f46e5',
+    font: 'Inter'
+  };
+
+  const ALLOWED_ACCENTS = [
+    '#4f46e5',
+    '#db2777',
+    '#0891b2',
+    '#059669',
+    '#d97706',
+    '#7c3aed'
+  ];
+
+  const ALLOWED_FONTS = [
+    'Inter',
+    'Poppins',
+    'Roboto',
+    'Fira Code'
+  ];
+
+  function loadAppearancePreferences() {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(APPEARANCE_STORAGE_KEY) || '{}'
+      );
+
+      return {
+        accent: ALLOWED_ACCENTS.includes(saved.accent)
+          ? saved.accent
+          : DEFAULT_APPEARANCE.accent,
+        font: ALLOWED_FONTS.includes(saved.font)
+          ? saved.font
+          : DEFAULT_APPEARANCE.font
+      };
+    } catch (error) {
+      return { ...DEFAULT_APPEARANCE };
+    }
+  }
+
+  let appearancePreferences = loadAppearancePreferences();
+
+  function applyAppearance() {
+    const { accent, font } = appearancePreferences;
+
+    document.documentElement.style.setProperty(
+      '--primary-color',
+      accent
+    );
+
+    document.documentElement.style.setProperty(
+      '--primary-hover',
+      accent
+    );
+
+    document.body.style.fontFamily =
+      `"${font}", "Segoe UI", sans-serif`;
+
+    if (appearanceFont) {
+      appearanceFont.value = font;
+    }
+
+    if (appearanceColorOptions) {
+      appearanceColorOptions
+        .querySelectorAll('[data-accent]')
+        .forEach((button) => {
+          const selected = button.dataset.accent === accent;
+
+          button.setAttribute(
+            'aria-pressed',
+            String(selected)
+          );
+
+          button.style.outline = selected
+            ? `3px solid ${accent}`
+            : 'none';
+
+          button.style.outlineOffset = '3px';
+        });
+    }
+  }
+
+  function saveAppearancePreferences() {
+    try {
+      localStorage.setItem(
+        APPEARANCE_STORAGE_KEY,
+        JSON.stringify(appearancePreferences)
+      );
+
+      setAlert(
+        appearanceAlert,
+        'Appearance preferences saved!',
+        'success'
+      );
+    } catch (error) {
+      setAlert(
+        appearanceAlert,
+        'Your changes are applied, but this browser could not save them.',
+        'error'
+      );
+    }
+  }
+
+  function hideAppearanceScreen() {
+    if (appearanceScreen) {
+      appearanceScreen.classList.add('hidden');
+    }
+  }
+
+  function showAppearanceScreen() {
+    if (!currentUser || !appearanceScreen) return;
+
+    appScreen.classList.add('hidden');
+
+    if (archiveScreen) {
+      archiveScreen.classList.add('hidden');
+    }
+
+    if (securityScreen) {
+      securityScreen.classList.add('hidden');
+    }
+
+    appearanceScreen.classList.remove('hidden');
+
+    setAlert(appearanceAlert, '');
+    applyAppearance();
+    refreshIcons();
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  if (navAppearanceBtn) {
+    navAppearanceBtn.addEventListener(
+      'click',
+      showAppearanceScreen
+    );
+  }
+
+  if (appearanceBackBtn) {
+    appearanceBackBtn.addEventListener('click', () => {
+      hideAppearanceScreen();
+      showTaskView('dashboard');
+    });
+  }
+
+  if (navDashboardLink) {
+    navDashboardLink.addEventListener(
+      'click',
+      hideAppearanceScreen
+    );
+  }
+
+  if (navDashboardBtn) {
+    navDashboardBtn.addEventListener(
+      'click',
+      hideAppearanceScreen
+    );
+  }
+
+  if (navArchiveBtn) {
+    navArchiveBtn.addEventListener(
+      'click',
+      hideAppearanceScreen
+    );
+  }
+
+  if (navPasswordBtn) {
+    navPasswordBtn.addEventListener(
+      'click',
+      hideAppearanceScreen
+    );
+  }
+
+  if (appearanceColorOptions) {
+    appearanceColorOptions.addEventListener(
+      'click',
+      (event) => {
+        const button = event.target.closest('[data-accent]');
+
+        if (!button) return;
+
+        const accent = button.dataset.accent;
+
+        if (!ALLOWED_ACCENTS.includes(accent)) return;
+
+        appearancePreferences.accent = accent;
+
+        applyAppearance();
+        saveAppearancePreferences();
+      }
+    );
+  }
+
+  if (appearanceFont) {
+    appearanceFont.addEventListener('change', () => {
+      const font = appearanceFont.value;
+
+      if (!ALLOWED_FONTS.includes(font)) return;
+
+      appearancePreferences.font = font;
+
+      applyAppearance();
+      saveAppearancePreferences();
+    });
+  }
+
+  if (appearanceResetBtn) {
+    appearanceResetBtn.addEventListener('click', () => {
+      appearancePreferences = {
+        ...DEFAULT_APPEARANCE
+      };
+
+      applyAppearance();
+      saveAppearancePreferences();
+
+      setAlert(
+        appearanceAlert,
+        'Appearance restored to default!',
+        'success'
+      );
+    });
+  }
+
+  // Apply saved settings when FocusCraft starts.
+  applyAppearance();
 
 
   // ---------- Initial dashboard ----------

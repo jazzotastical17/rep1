@@ -401,6 +401,15 @@
           <i data-lucide="key-round" class="w-4 h-4"></i>
           <span class="hidden sm:inline">Security</span>
         </button>
+        <button
+          type="button"
+          id="nav-appearance-btn"
+          class="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition flex items-center gap-1.5"
+        >
+          <i data-lucide="palette" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Appearance</span>
+        </button>
+
       </div>
 
       <div class="flex items-center gap-3">
@@ -635,6 +644,95 @@
           <button type="button" id="username-signout-btn" class="font-semibold hover:underline">Sign out</button>
         </p>
 
+      </div>
+    </section>
+
+    <!-- STEP 8 - APPEARANCE SETTINGS -->
+    <section id="appearance-screen" class="hidden max-w-xl w-full mx-auto my-auto">
+      <div class="glass-card p-6 sm:p-8 rounded-2xl shadow-xl">
+
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-12 h-12 theme-bg rounded-xl flex items-center justify-center text-white">
+            <i data-lucide="palette" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">
+              Appearance Settings
+            </h2>
+            <p class="text-sm text-slate-500">
+              Make FocusCraft feel like yours.
+            </p>
+          </div>
+        </div>
+
+        <div id="appearance-alert" class="alert hidden"></div>
+
+        <div class="space-y-6">
+
+          <div>
+            <h3 class="font-bold text-slate-800 mb-2">Accent Color</h3>
+            <p class="text-xs text-slate-500 mb-3">
+              Choose the color used for buttons and highlights.
+            </p>
+
+            <div id="appearance-color-options" class="flex flex-wrap gap-3">
+              <button type="button" data-accent="#4f46e5" aria-label="Indigo" title="Indigo" class="w-11 h-11 rounded-full border-4 border-white shadow-md" style="background-color:#4f46e5"></button>
+              <button type="button" data-accent="#db2777" aria-label="Pink" title="Pink" class="w-11 h-11 rounded-full border-4 border-white shadow-md" style="background-color:#db2777"></button>
+              <button type="button" data-accent="#0891b2" aria-label="Cyan" title="Cyan" class="w-11 h-11 rounded-full border-4 border-white shadow-md" style="background-color:#0891b2"></button>
+              <button type="button" data-accent="#059669" aria-label="Green" title="Green" class="w-11 h-11 rounded-full border-4 border-white shadow-md" style="background-color:#059669"></button>
+              <button type="button" data-accent="#d97706" aria-label="Amber" title="Amber" class="w-11 h-11 rounded-full border-4 border-white shadow-md" style="background-color:#d97706"></button>
+              <button type="button" data-accent="#7c3aed" aria-label="Purple" title="Purple" class="w-11 h-11 rounded-full border-4 border-white shadow-md" style="background-color:#7c3aed"></button>
+            </div>
+          </div>
+
+          <div>
+            <label for="appearance-font" class="block font-bold text-slate-800 mb-2">
+              Font Style
+            </label>
+            <select
+              id="appearance-font"
+              class="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-800"
+            >
+              <option value="Inter">Inter — Modern</option>
+              <option value="Poppins">Poppins — Rounded</option>
+              <option value="Roboto">Roboto — Classic</option>
+              <option value="Fira Code">Fira Code — Tech</option>
+            </select>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 bg-white/70 p-4">
+            <p class="text-xs uppercase tracking-wider font-bold text-slate-500 mb-2">
+              Live Preview
+            </p>
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="font-bold text-slate-900">Your FocusCraft</p>
+                <p class="text-xs text-slate-500">Stay focused. Keep creating.</p>
+              </div>
+              <span class="theme-bg text-white text-xs font-semibold px-3 py-2 rounded-lg">
+                Let's Go!
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            id="appearance-reset-btn"
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50 transition"
+          >
+            Reset to Default
+          </button>
+
+          <button
+            type="button"
+            id="appearance-back-btn"
+            class="w-full px-4 py-3 rounded-xl font-semibold btn-primary flex items-center justify-center gap-2"
+          >
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Back to Dashboard
+          </button>
+
+        </div>
       </div>
     </section>
 
