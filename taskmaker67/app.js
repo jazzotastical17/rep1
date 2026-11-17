@@ -117,6 +117,60 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
   const taskPinned = document.getElementById('task-pinned');
   const taskSaveBtn = document.getElementById('task-save-btn');
 
+  // ---------- Task image attachments ----------
+  const taskImageInput =
+    document.getElementById('task-image-input');
+
+  const taskImagePreview =
+    document.getElementById('task-image-preview');
+
+  const TASK_IMAGE_BUCKET = 'task-images';
+
+  const TASK_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+  const TASK_IMAGE_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ];
+
+  // Preview selected task images
+  if (taskImageInput && taskImagePreview) {
+    taskImageInput.addEventListener('change', () => {
+      taskImagePreview.replaceChildren();
+
+      const files = Array.from(taskImageInput.files);
+
+      files.forEach((file) => {
+        if (
+          !TASK_IMAGE_TYPES.includes(file.type) ||
+          file.size > TASK_IMAGE_MAX_BYTES
+        ) {
+          setAlert(
+            taskFormAlert,
+            'Only JPG, PNG, or WebP images up to 5 MB are allowed.',
+            'error'
+          );
+          return;
+        }
+
+        const imageUrl = URL.createObjectURL(file);
+
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = file.name;
+        img.className =
+          'w-full h-24 object-cover rounded-lg border border-slate-200';
+
+        img.addEventListener('load', () => {
+          URL.revokeObjectURL(imageUrl);
+        }, { once: true });
+
+        taskImagePreview.appendChild(img);
+      });
+    });
+  }
+
   // ---------- Navigation buttons ----------
   const navDashboardBtn = document.getElementById('nav-dashboard-btn');
   const navDashboardLink = document.getElementById('nav-dashboard-btn-link');

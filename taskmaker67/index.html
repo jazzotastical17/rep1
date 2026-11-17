@@ -1237,6 +1237,31 @@
           </span>
         </label>
 
+<!-- TASK IMAGE ATTACHMENTS -->
+<div class="space-y-2">
+  <label for="task-image-input"
+         class="block text-sm font-semibold text-slate-700">
+    Attach Images (Optional)
+  </label>
+
+  <input
+    type="file"
+    id="task-image-input"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+    class="task-input"
+  >
+
+  <p class="text-xs text-slate-500">
+    Add multiple JPG, PNG, or WebP images.
+    Maximum 5 MB per image.
+  </p>
+
+  <div id="task-image-preview"
+       class="grid grid-cols-3 gap-2">
+  </div>
+</div>
+
         <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-3 border-t border-slate-200">
           <button
             type="button"
