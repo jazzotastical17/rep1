@@ -137,6 +137,7 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
   // Preview selected task images
   if (taskImageInput && taskImagePreview) {
     taskImageInput.addEventListener('change', () => {
+      console.log('IMAGE INPUT CHANGED!', taskImageInput.files);
       taskImagePreview.replaceChildren();
 
       const files = Array.from(taskImageInput.files);
@@ -1298,55 +1299,65 @@ actions.append(
   }
 
   // ---------- Task modal ----------
-  function openTaskModal() {
-    if (!currentUser || taskBusy) return;
+  
+function openTaskModal() {
+  if (!currentUser || taskBusy) return;
 
-    taskForm.reset();
-    taskEditId.value = '';
-    taskPriority.value = 'Medium';
-    taskPinned.checked = false;
+  taskForm.reset();
+  if (taskImageInput) taskImageInput.value = '';
+  if (taskImagePreview) taskImagePreview.replaceChildren();
 
-    taskModalTitle.textContent = 'Create a Task';
-    taskSaveBtn.textContent = 'Save Task';
+  taskEditId.value = '';
+  taskPriority.value = 'Medium';
+  taskPinned.checked = false;
 
-    setAlert(taskFormAlert, '');
+  taskModalTitle.textContent = 'Create a Task';
+  taskSaveBtn.textContent = 'Save Task';
 
-    taskModal.classList.remove('hidden');
+  setAlert(taskFormAlert, '');
 
-    taskTitleInput.focus();
-  }
+  taskModal.classList.remove('hidden');
+  taskTitleInput.focus();
+}
 
-  function openEditTaskModal(task) {
-    if (!currentUser || taskBusy) return;
 
-    taskForm.reset();
+  
+function openEditTaskModal(task) {
+  if (!currentUser || taskBusy) return;
 
-    taskEditId.value = task.id;
-    taskTitleInput.value = task.title || '';
-    taskStartDate.value = task.start_date || '';
-    taskDueDate.value = task.due_date || '';
-    taskPriority.value = normalizePriority(task.priority);
-    taskPinned.checked = Boolean(task.is_pinned);
+  taskForm.reset();
+  if (taskImageInput) taskImageInput.value = '';
+  if (taskImagePreview) taskImagePreview.replaceChildren();
 
-    taskModalTitle.textContent = 'Edit Task';
-    taskSaveBtn.textContent = 'Save Changes';
+  taskEditId.value = task.id;
+  taskTitleInput.value = task.title || '';
+  taskStartDate.value = task.start_date || '';
+  taskDueDate.value = task.due_date || '';
+  taskPriority.value = normalizePriority(task.priority);
+  taskPinned.checked = Boolean(task.is_pinned);
 
-    setAlert(taskFormAlert, '');
+  taskModalTitle.textContent = 'Edit Task';
+  taskSaveBtn.textContent = 'Save Changes';
 
-    taskModal.classList.remove('hidden');
+  setAlert(taskFormAlert, '');
 
-    taskTitleInput.focus();
-  }
+  taskModal.classList.remove('hidden');
+  taskTitleInput.focus();
+}
+
 
   function closeTaskModal() {
-    if (!taskModal) return;
+  if (taskImageInput) taskImageInput.value = '';
+  if (taskImagePreview) taskImagePreview.replaceChildren();
 
-    taskModal.classList.add('hidden');
+  if (!taskModal) return;
 
-    if (taskForm) taskForm.reset();
+  taskModal.classList.add('hidden');
 
-    setAlert(taskFormAlert, '');
-  }
+  if (taskForm) taskForm.reset();
+
+  setAlert(taskFormAlert, '');
+}
 
   if (taskAddBtn) {
     taskAddBtn.addEventListener('click', openTaskModal);
