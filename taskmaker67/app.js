@@ -137,7 +137,6 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
   // Preview selected task images
   if (taskImageInput && taskImagePreview) {
     taskImageInput.addEventListener('change', () => {
-      console.log('IMAGE INPUT CHANGED!', taskImageInput.files);
       taskImagePreview.replaceChildren();
 
       const files = Array.from(taskImageInput.files);
