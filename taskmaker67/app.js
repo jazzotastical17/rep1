@@ -171,6 +171,78 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
     });
   }
 
+  // ---------- Saved task image helpers ----------
+  function validateTaskImages() {
+    const files = taskImageInput ? Array.from(taskImageInput.files) : [];
+    for (const file of files) {
+      if (!TASK_IMAGE_TYPES.includes(file.type) || file.size > TASK_IMAGE_MAX_BYTES) {
+        throw new Error('Only JPG, PNG, or WebP images up to 5 MB are allowed.');
+      }
+    }
+    return files;
+  }
+
+  async function listTaskImages(taskId, userId) {
+    const folder = `${userId}/${taskId}`;
+    const { data, error } = await supabaseClient.storage
+      .from(TASK_IMAGE_BUCKET).list(folder, { limit: 100 });
+    if (error) throw error;
+    return (data || []).filter(item => item.id).map(item => `${folder}/${item.name}`);
+  }
+
+  async function signedTaskImages(taskId, userId) {
+    const paths = await listTaskImages(taskId, userId);
+    if (!paths.length) return [];
+    const { data, error } = await supabaseClient.storage
+      .from(TASK_IMAGE_BUCKET).createSignedUrls(paths, 3600);
+    if (error) throw error;
+    return (data || []).filter(item => item.signedUrl).map(item => item.signedUrl);
+  }
+
+  async function showSavedTaskImages(taskId, target, userId, version) {
+    try {
+      const urls = await signedTaskImages(taskId, userId);
+      if (!isCurrentSession(userId, version) || !target.isConnected) return;
+      // The edit modal may have been closed or switched to another task.
+      if (target === taskImagePreview &&
+          (taskModal.classList.contains('hidden') || taskEditId.value !== String(taskId))) return;
+      urls.forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Saved task attachment';
+        img.loading = 'lazy';
+        img.className = 'w-full h-24 object-cover rounded-lg border border-slate-200';
+        target.appendChild(img);
+      });
+    } catch (error) {
+      console.warn('Could not load saved task images:', error);
+      if (target === taskImagePreview && isCurrentSession(userId, version)) {
+        setAlert(taskFormAlert, 'Saved images could not load: ' + error.message, 'error');
+      }
+    }
+  }
+
+  async function uploadTaskImages(files, taskId, userId) {
+    const uploaded = [];
+    try {
+      for (const file of files) {
+        const extension = file.type === 'image/png' ? 'png' :
+          file.type === 'image/webp' ? 'webp' : 'jpg';
+        const path = `${userId}/${taskId}/${crypto.randomUUID()}.${extension}`;
+        const { error } = await supabaseClient.storage
+          .from(TASK_IMAGE_BUCKET)
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (error) throw error;
+        uploaded.push(path);
+      }
+    } catch (error) {
+      if (uploaded.length) {
+        await supabaseClient.storage.from(TASK_IMAGE_BUCKET).remove(uploaded);
+      }
+      throw error;
+    }
+  }
+
   // ---------- Navigation buttons ----------
   const navDashboardBtn = document.getElementById('nav-dashboard-btn');
   const navDashboardLink = document.getElementById('nav-dashboard-btn-link');
@@ -1171,6 +1243,14 @@ let result = tasks.filter((task) => {
       content.appendChild(dates);
     }
 
+    // Load private attachment thumbnails using short-lived signed URLs.
+    const attachmentGrid = document.createElement('div');
+    attachmentGrid.className = 'grid grid-cols-3 sm:grid-cols-5 gap-2 mt-3';
+    content.appendChild(attachmentGrid);
+    if (currentUser) {
+      showSavedTaskImages(task.id, attachmentGrid, currentUser.id, sessionVersion);
+    }
+
     outer.appendChild(content);
 
     // ---------- Task action buttons ----------
@@ -1328,6 +1408,8 @@ function openEditTaskModal(task) {
   if (taskImageInput) taskImageInput.value = '';
   if (taskImagePreview) taskImagePreview.replaceChildren();
 
+  showSavedTaskImages(task.id, taskImagePreview, currentUser.id, sessionVersion);
+
   taskEditId.value = task.id;
   taskTitleInput.value = task.title || '';
   taskStartDate.value = task.start_date || '';
@@ -1442,6 +1524,14 @@ function openEditTaskModal(task) {
         return;
       }
 
+      let imageFiles;
+      try {
+        imageFiles = validateTaskImages();
+      } catch (error) {
+        setAlert(taskFormAlert, error.message, 'error');
+        return;
+      }
+
       const userId = currentUser.id;
       const version = sessionVersion;
 
@@ -1490,6 +1580,20 @@ function openEditTaskModal(task) {
             'Task was not saved. Check your database permissions.'
           );
         }
+
+        const savedTaskId = response.data[0].id;
+        if (imageFiles.length) {
+          taskSaveBtn.textContent = 'Uploading images...';
+          try {
+            await uploadTaskImages(imageFiles, savedTaskId, userId);
+          } catch (uploadError) {
+            throw new Error(
+              'Task details were saved, but images failed to upload: ' +
+              uploadError.message + '. Please retry attaching them.'
+            );
+          }
+        }
+        if (!isCurrentSession(userId, version)) return;
 
         closeTaskModal();
 
