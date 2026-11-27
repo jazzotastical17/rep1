@@ -599,6 +599,9 @@ if (appearanceScreen) {
   function showSignedOut() {
     sessionVersion++;
     currentUser = null;
+    document.getElementById('fc-shared-list').replaceChildren();
+    document.getElementById('fc-status').textContent = '';
+    document.getElementById('fc-code').value = '';
     currentBgPath = null;
     tasks = [];
     tasksLoading = false;
@@ -647,6 +650,7 @@ if (archiveScreen) {
     navBar.classList.remove('hidden');
     appScreen.classList.remove('hidden');
     loadOrganizationPreferences();
+    fcRefresh();
 
     refreshIcons();
   }
@@ -1289,6 +1293,7 @@ archiveButton.disabled = taskBusy;
 deleteButton.disabled = taskBusy;
 
 actions.append(
+  createActionButton('Share task', 'share-2', () => fcShare(task)),
   pinButton,
   editButton,
   archiveButton,
@@ -3244,7 +3249,100 @@ function openEditTaskModal(task) {
   applyAppearance();
 
 
+
+  // Build 3: shared tasks. All authorization is enforced by Supabase.
+  // Install the sharing panel when using the original index.html.
+  if (!document.getElementById('fc-social')) {
+    document.getElementById('task-list').parentElement.insertAdjacentHTML('afterend', `      <section class="glass-card p-6 rounded-2xl shadow-xl space-y-3" id="fc-social">
+        <h3 class="text-lg font-bold">Shared tasks</h3>
+        <div class="flex flex-wrap gap-2">
+          <input id="fc-code" class="border rounded-lg p-2 text-slate-900" placeholder="Invite code" aria-label="Invite code">
+          <button id="fc-join" class="btn-primary rounded-lg px-4 py-2">Join task</button>
+          <button id="fc-refresh" class="border rounded-lg px-4 py-2">Refresh</button>
+        </div>
+        <p id="fc-status" role="status" class="text-sm"></p>
+        <div id="fc-shared-list" class="space-y-3"></div>
+      </section>
+`);
+  }
+  const fcList = document.getElementById('fc-shared-list');
+  const fcStatus = document.getElementById('fc-status');
+  let fcRequest = 0;
+  function fcButton(label, handler) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label;
+    b.className = 'border rounded-lg px-3 py-2 text-sm';
+    b.onclick = async () => {
+      b.disabled = true;
+      const user = currentUser?.id;
+      try { await handler(); }
+      catch (e) { if (currentUser?.id === user) fcStatus.textContent = e.message || String(e); }
+      finally { b.disabled = false; }
+    };
+    return b;
+  }
+  async function fcRefresh() {
+    if (!currentUser) return;
+    const user = currentUser.id, version = sessionVersion, request = ++fcRequest;
+    fcList.replaceChildren();
+    const {data, error} = await supabaseClient.rpc('fc_get_shared_tasks');
+    if (sessionVersion !== version || request !== fcRequest || currentUser?.id !== user) return;
+    if (error) { fcStatus.textContent = error.message; return; }
+    fcStatus.textContent = data.length ? '' : 'No shared tasks yet.';
+    for (const task of data) {
+      const card = document.createElement('div');
+      card.className = 'border rounded-xl p-3 space-y-2';
+      const title = document.createElement('h4'); title.className = 'font-bold';
+      title.textContent = task.title;
+      const details = document.createElement('p');
+      details.textContent = `Due: ${task.due_date || 'None'} | ${task.priority || ''} | ${task.is_completed ? 'Completed' : 'Open'}`;
+      card.append(title, details);
+      if (task.owner_id === user) {
+        const code = document.createElement('p'); code.className = 'break-all text-sm';
+        code.textContent = 'Invite code: ' + task.invite_code;
+        card.append(code, fcButton('Copy invite code', async () => { await navigator.clipboard.writeText(task.invite_code); }));
+      } else {
+        card.append(fcButton('Leave task', async () => {
+          if (!confirm('Leave this shared task?')) return;
+          const {error} = await supabaseClient.from('shared_task_members').delete().eq('shared_task_id', task.shared_id).eq('user_id', user);
+          if (error) throw error; await fcRefresh();
+        }));
+      }
+      fcList.append(card);
+    }
+  }
+  async function fcShare(task) {
+    if (!currentUser) return;
+    const user = currentUser.id, version = sessionVersion;
+    try {
+      const existing = await supabaseClient.from('Shared_tasks').select('id').eq('task_id', task.id).eq('owner_id', user).limit(1);
+      if (existing.error) throw existing.error;
+      if (sessionVersion !== version) return;
+      if (!existing.data.length) {
+        const {error} = await supabaseClient.from('Shared_tasks').insert({task_id: task.id, owner_id: user, invite_code: crypto.randomUUID()});
+        if (error) throw error;
+      }
+      if (sessionVersion !== version) return;
+      await fcRefresh();
+      if (sessionVersion === version) document.getElementById('fc-social').scrollIntoView({behavior:'smooth'});
+    } catch(e) { if (sessionVersion === version) alert(e.message || String(e)); }
+  }
+  document.getElementById('fc-refresh').onclick = fcRefresh;
+  document.getElementById('fc-join').onclick = async function () {
+    if (!currentUser) return;
+    const version = sessionVersion, input = document.getElementById('fc-code');
+    if (!input.value.trim()) return;
+    this.disabled = true;
+    try {
+      const {error} = await supabaseClient.rpc('fc_join_shared_task', {p_code: input.value.trim()});
+      if (error) throw error;
+      if (sessionVersion !== version) return;
+      input.value = ''; await fcRefresh();
+    } catch(e) { if (sessionVersion === version) fcStatus.textContent = e.message || String(e); }
+    finally { this.disabled = false; }
+  };
   // ---------- Initial dashboard ----------
   renderTasks();
   refreshIcons();
+
 });
