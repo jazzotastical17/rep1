@@ -351,6 +351,8 @@ const archiveEmptyBackBtn = document.getElementById('archive-empty-back-btn');
   }
 
  function hideAllScreens() {
+  fcSocialScreen.classList.add('hidden');
+  fcModScreen.classList.add('hidden');
   authScreen.classList.add('hidden');
   usernameScreen.classList.add('hidden');
   resetScreen.classList.add('hidden');
@@ -602,6 +604,9 @@ if (appearanceScreen) {
     document.getElementById('fc-shared-list').replaceChildren();
     document.getElementById('fc-status').textContent = '';
     document.getElementById('fc-code').value = '';
+    fcStaffPanel.replaceChildren();
+    fcStaffPanel.hidden = true;
+    fcModNav.classList.add('hidden');
     currentBgPath = null;
     tasks = [];
     tasksLoading = false;
@@ -651,6 +656,7 @@ if (archiveScreen) {
     appScreen.classList.remove('hidden');
     loadOrganizationPreferences();
     fcRefresh();
+    fcStaff();
 
     refreshIcons();
   }
@@ -1811,6 +1817,7 @@ function openEditTaskModal(task) {
   }
 
   function showTaskView(view) {
+    fcCloseViews();
     if (!currentUser || !archiveScreen) return;
 
     currentTaskView =
@@ -2891,6 +2898,7 @@ function openEditTaskModal(task) {
   // ============================================================
 
   function showSecurityScreen() {
+    fcCloseViews();
     if (!currentUser || !securityScreen) return;
 
     appScreen.classList.add('hidden');
@@ -3129,6 +3137,7 @@ function openEditTaskModal(task) {
   }
 
   function showAppearanceScreen() {
+    fcCloseViews();
     if (!currentUser || !appearanceScreen) return;
 
     appScreen.classList.add('hidden');
@@ -3276,7 +3285,7 @@ function openEditTaskModal(task) {
       b.disabled = true;
       const user = currentUser?.id;
       try { await handler(); }
-      catch (e) { if (currentUser?.id === user) fcStatus.textContent = e.message || String(e); }
+      catch (e) { if (currentUser?.id === user) { fcStatus.textContent = e.message || String(e); alert(e.message || String(e)); } }
       finally { b.disabled = false; }
     };
     return b;
@@ -3308,6 +3317,13 @@ function openEditTaskModal(task) {
           if (error) throw error; await fcRefresh();
         }));
       }
+      const toggle = fcButton('Open messages', async () => {
+        const area = card.querySelector('.fc-messages');
+        if (area) { area.remove(); toggle.textContent = 'Open messages'; toggle.setAttribute('aria-expanded','false'); return; }
+        await fcMessages(task, card, user, version);
+        if (card.querySelector('.fc-messages')) { toggle.textContent = 'Close messages'; toggle.setAttribute('aria-expanded','true'); }
+      });
+      toggle.setAttribute('aria-expanded','false'); card.append(toggle);
       fcList.append(card);
     }
   }
@@ -3324,7 +3340,7 @@ function openEditTaskModal(task) {
       }
       if (sessionVersion !== version) return;
       await fcRefresh();
-      if (sessionVersion === version) document.getElementById('fc-social').scrollIntoView({behavior:'smooth'});
+      if (sessionVersion === version) fcOpenView(fcSocialScreen);
     } catch(e) { if (sessionVersion === version) alert(e.message || String(e)); }
   }
   document.getElementById('fc-refresh').onclick = fcRefresh;
@@ -3341,8 +3357,178 @@ function openEditTaskModal(task) {
     } catch(e) { if (sessionVersion === version) fcStatus.textContent = e.message || String(e); }
     finally { this.disabled = false; }
   };
+
+  // Build 3: task conversations and report moderation.
+  const fcStaffPanel = document.createElement('section');
+  fcStaffPanel.className = 'glass-card p-6 rounded-2xl shadow-xl space-y-3';
+  fcStaffPanel.hidden = true;
+  const fcSocialScreen = document.createElement('section');
+  const fcModScreen = document.createElement('section');
+  for (const screen of [fcSocialScreen,fcModScreen]) {
+    screen.className = 'hidden w-full space-y-6';
+    appScreen.after(screen);
+    screen.append(fcButton('Back to dashboard',()=>showTaskView('dashboard')));
+  }
+  fcSocialScreen.append(document.getElementById('fc-social'));
+  fcModScreen.append(fcStaffPanel);
+  function fcCloseViews() { fcSocialScreen.classList.add('hidden'); fcModScreen.classList.add('hidden'); }
+  function fcOpenView(screen) {
+    if (!currentUser) return;
+    fcCloseViews();
+    for (const el of [appScreen,archiveScreen,securityScreen,appearanceScreen]) el?.classList.add('hidden');
+    screen.classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function fcNav(label,icon,handler) {
+    const b = document.createElement('button'); b.type='button'; b.title=label; b.setAttribute('aria-label',label);
+    b.className=navArchiveBtn.className;
+    const i=document.createElement('i'); i.setAttribute('data-lucide',icon); i.className='w-4 h-4'; b.append(i);
+    b.onclick=handler; navAppearanceBtn.after(b); return b;
+  }
+  const fcModNav=fcNav('Moderation','shield-check',()=>{fcOpenView(fcModScreen);fcStaff();});
+  fcModNav.classList.add('hidden');
+  const fcSocialNav=fcNav('Social','messages-square',()=>{fcOpenView(fcSocialScreen);fcRefresh();});
+
+  function fcText(tag, value, cls = '') {
+    const el = document.createElement(tag); el.textContent = value; el.className = cls; return el;
+  }
+  async function fcMessages(task, card, user, version) {
+    if (!isCurrentSession(user, version) || !card.isConnected) return;
+    let area = card.querySelector('.fc-messages');
+    if (!area) { area = document.createElement('div'); area.className = 'fc-messages space-y-2 border-t pt-3'; card.append(area); }
+    const {data, error} = await supabaseClient.from('shared_task_messages').select('id,sender_id,message,created_at').eq('shared_task_id', task.shared_id).order('created_at', {ascending:false}).limit(100);
+    if (error) throw error;
+    if (!isCurrentSession(user, version) || !area.isConnected) return;
+    const ids = [...new Set(data.map(m => m.sender_id))];
+    const profiles = ids.length ? await supabaseClient.from('profiles').select('id,username').in('id',ids) : {data:[]};
+    if (!isCurrentSession(user, version) || !area.isConnected) return;
+    const names = new Map((profiles.data || []).map(p => [p.id,p.username]));
+    area.replaceChildren(fcText('h5','Task messages','font-bold'));
+    for (const m of [...data].reverse()) {
+      const row = document.createElement('div'); row.className = 'border rounded-lg p-2 space-y-1';
+      row.append(fcText('p',m.sender_id === user ? 'You' : names.get(m.sender_id) || 'Member','font-semibold text-sm'),fcText('p',m.message,'break-words whitespace-pre-wrap'),fcText('p',new Date(m.created_at).toLocaleString(),'text-xs'));
+      if (m.sender_id !== user) row.append(fcButton('Report', async () => {
+        const reason = prompt('Why are you reporting this message?');
+        if (!reason?.trim() || !isCurrentSession(user,version)) return;
+        if (reason.trim().length > 1000) throw new Error('Reason must be at most 1000 characters.');
+        const {error} = await supabaseClient.from('message_reports').insert({message_id:m.id,reporter_id:user,reason:reason.trim(),status:'pending'});
+        if (error) throw error;
+        if (isCurrentSession(user,version)) fcStatus.textContent = 'Report submitted.';
+      }));
+      area.append(row);
+    }
+    if (!data.length) area.append(fcText('p','No messages yet.','text-sm'));
+    const input = document.createElement('textarea'); input.maxLength = 2000; input.placeholder = 'Write a message…'; input.className = 'border rounded-lg p-2 w-full text-slate-900'; input.setAttribute('aria-label','Task message');
+    area.append(input,fcButton('Send',async () => {
+      const message = input.value.trim(); if (!message || !isCurrentSession(user,version)) return;
+      const {error} = await supabaseClient.from('shared_task_messages').insert({shared_task_id:task.shared_id,sender_id:user,message});
+      if (error) throw error;
+      if (isCurrentSession(user,version)) { input.value = ''; await fcMessages(task,card,user,version); }
+    }),fcButton('Refresh messages',()=>fcMessages(task,card,user,version)));
+  }
+  async function fcStaff() {
+    if (!currentUser) return;
+    const user = currentUser.id, version = sessionVersion;
+    fcStaffPanel.hidden = true; fcStaffPanel.replaceChildren();
+    try {
+      const role = await supabaseClient.rpc('fc_can_moderate');
+      if (role.error) throw role.error;
+      if (!isCurrentSession(user,version)) return;
+      fcModNav.classList.toggle('hidden', !role.data);
+      if (!role.data) { if (!fcModScreen.classList.contains('hidden')) showTaskView('dashboard'); return; }
+      const admin = await supabaseClient.rpc('fc_is_admin');
+      if (admin.error) throw admin.error;
+      const reports = await supabaseClient.rpc('fc_get_reports');
+      if (reports.error) throw reports.error;
+      if (!isCurrentSession(user,version)) return;
+      fcStaffPanel.hidden = false;
+      fcStaffPanel.append(fcText('h3',admin.data ? 'Admin moderation panel' : 'Moderator panel','text-lg font-bold'),fcButton('Refresh reports',fcStaff));
+      if (admin.data) {
+        const management = document.createElement('section');
+        management.className = 'border rounded-xl p-3 space-y-2';
+        const username = document.createElement('input');
+        username.className = 'border rounded-lg p-2 w-full text-slate-900';
+        username.placeholder = 'Exact username';
+        username.setAttribute('aria-label', 'Username to manage');
+        const status = fcText('p', '', 'text-sm');
+        status.setAttribute('role', 'status');
+        management.append(fcText('h4', 'Manage moderators', 'font-bold'), username);
+        for (const enabled of [true, false]) {
+          management.append(fcButton(enabled ? 'Promote to moderator' : 'Remove moderator role', async () => {
+            if (!isCurrentSession(user, version)) return;
+            const name = username.value.trim();
+            if (!name) { status.textContent = 'Enter a username.'; return; }
+            const result = await supabaseClient.from('profiles').select('id,username').eq('username', name).limit(2);
+            if (!isCurrentSession(user, version) || !management.isConnected) return;
+            if (result.error) throw result.error;
+            if (result.data.length !== 1) throw new Error('Username not found or ambiguous.');
+            const target = result.data[0];
+            if (!confirm((enabled ? 'Promote ' : 'Remove moderator role from ') + target.username + '?')) return;
+            if (!isCurrentSession(user, version)) return;
+            const {error} = await supabaseClient.rpc('fc_set_moderator', {p_user_id: target.id, p_enabled: enabled});
+            if (error) throw error;
+            if (isCurrentSession(user, version)) status.textContent = enabled ? target.username + ' is now a moderator.' : 'Moderator role removed from ' + target.username + '.';
+          }));
+        }
+        management.append(status);
+        fcStaffPanel.append(management);
+      }
+      const pending = reports.data.filter(r=>r.status === 'pending');
+      const senderIds = [...new Set(pending.map(r=>r.sender_id))];
+      const senderProfiles = senderIds.length ? await supabaseClient.from('profiles').select('id,username').in('id',senderIds) : {data:[]};
+      if (!isCurrentSession(user,version)) return;
+      const senderNames = new Map((senderProfiles.data || []).map(p=>[p.id,p.username]));
+      if (!pending.length) fcStaffPanel.append(fcText('p','No pending reports.'));
+      for (const r of pending) {
+        const row = document.createElement('div'); row.className = 'border rounded-lg p-3 space-y-2';
+        row.append(fcText('p','Reported message: '+r.message,'break-words'),fcText('p','Reason: '+r.reason,'break-words'),fcText('p','Sender: '+(senderNames.get(r.sender_id)||r.sender_id),'text-xs break-all'));
+        for (const action of ['hide','dismiss']) row.append(fcButton(action === 'hide' ? 'Hide message' : 'Dismiss report',async()=>{
+          if (!isCurrentSession(user,version)) return;
+          const {error} = await supabaseClient.rpc('fc_resolve_report',{p_report_id:r.report_id,p_action:action});
+          if (error) throw error; if (isCurrentSession(user,version)) { await fcStaff(); await fcRefresh(); }
+        }));
+        for (const punishment of admin.data ? ['probation','suspended','banned'] : ['probation','suspended']) row.append(fcButton(punishment === 'banned' ? 'Ban sender' : punishment === 'suspended' ? 'Suspend sender' : 'Place on probation',async()=>{
+          const reason = prompt('Reason for '+punishment+'?'); if (!reason?.trim()) return;
+          let hours = null;
+          if (punishment !== 'banned') { const raw = prompt('Duration in hours (1–720)','24'); if (raw === null) return; hours = Number(raw); if (!Number.isInteger(hours)||hours<1||hours>720) throw new Error('Invalid duration.'); }
+          if (!confirm('Apply '+punishment+' to this sender?') || !isCurrentSession(user,version)) return;
+          const {error} = await supabaseClient.rpc('fc_punish_user',{p_user_id:r.sender_id,p_punishment:punishment,p_reason:reason.trim(),p_hours:hours});
+          if (error) throw error; if (isCurrentSession(user,version)) alert('Punishment applied.');
+        }));
+        fcStaffPanel.append(row);
+      }
+      if (admin.data) fcStaffPanel.append(fcButton('Remove user punishment',async()=>{
+        const name = prompt('Enter the exact username'); if (!name?.trim() || !isCurrentSession(user,version)) return;
+        const result = await supabaseClient.from('profiles').select('id,username').eq('username',name.trim()).limit(2);
+        if (result.error) throw result.error;
+        if (result.data.length !== 1) throw new Error('Username not found or ambiguous.');
+        const id = result.data[0].id;
+        if (!isCurrentSession(user,version) || !confirm('Remove punishment for '+result.data[0].username+'?')) return;
+        const {error} = await supabaseClient.rpc('fc_remove_punishment',{p_user_id:id.trim()}); if (error) throw error;
+        if (isCurrentSession(user,version)) alert('Punishment removal requested successfully.');
+      }));
+    } catch(e) { if (isCurrentSession(user,version)) { fcStatus.textContent = 'Moderation: '+(e.message || String(e)); fcStaffPanel.hidden=false; fcStaffPanel.append(fcText('p','Moderation: '+(e.message || String(e)))); } }
+  }
+
   // ---------- Initial dashboard ----------
   renderTasks();
   refreshIcons();
 
 });
+// Independent appearance toggle; does not change account or moderation logic.
+ document.addEventListener('DOMContentLoaded', () => {
+   const toggle = document.getElementById('fc-mode-toggle');
+   if (!toggle) return;
+   const root = document.documentElement;
+   function updateMode(dark) {
+     root.dataset.fcMode = dark ? 'dark' : 'light';
+     toggle.textContent = dark ? '☀️' : '🌙';
+     toggle.setAttribute('aria-pressed', String(dark));
+     toggle.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+   }
+   updateMode(root.dataset.fcMode === 'dark');
+   toggle.addEventListener('click', () => {
+     const dark = root.dataset.fcMode !== 'dark';
+     updateMode(dark);
+     try { localStorage.setItem('fc-color-mode', dark ? 'dark' : 'light'); } catch (_) {}
+   });
+ });

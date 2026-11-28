@@ -362,7 +362,39 @@
         padding: 1rem;
       }
     }
+
+    /* FocusCraft dark mode: applies to static and dynamically generated cards. */
+    html[data-fc-mode="dark"] { color-scheme: dark; }
+    html[data-fc-mode="dark"] body { background-color: #0f172a; color: #e2e8f0; }
+    html[data-fc-mode="dark"] :is(.glass-card,.task-card,.archive-card,.modal-panel) { background: rgba(30,41,59,.96); border-color: #475569; }
+    html[data-fc-mode="dark"] :is(.organization-panel,.organization-clear-btn,.archive-action-btn,.task-input) { background: #172033; color: #e2e8f0; border-color: #475569; }
+    html[data-fc-mode="dark"] :is(.organization-label,.organization-result-count,.organization-tip,.archive-meta,.task-action-btn,.task-card-completed .task-title) { color: #b6c2d4; }
+    html[data-fc-mode="dark"] .organization-result-count strong { color: #f1f5f9; }
+    html[data-fc-mode="dark"] :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { background-color: #111827; color: #f1f5f9; border-color: #475569; }
+    html[data-fc-mode="dark"] ::placeholder { color: #94a3b8; }
+    html[data-fc-mode="dark"] :is(.border,.border-t,.border-b,.border-slate-200,.border-slate-300,[class~="border-slate-200/80"]) { border-color: #475569; }
+    html[data-fc-mode="dark"] :is(.bg-white,[class~="bg-white/60"],[class~="bg-white/70"],[class~="bg-white/90"]) { background-color: #1e293b; }
+    html[data-fc-mode="dark"] :is(.bg-slate-50,.bg-slate-100) { background-color: #273449; }
+    html[data-fc-mode="dark"] :is(.bg-slate-200,[class~="bg-slate-300/70"]) { background-color: #475569; }
+    html[data-fc-mode="dark"] :is(.text-slate-900,.text-slate-800,.text-slate-700) { color: #f1f5f9; }
+    html[data-fc-mode="dark"] :is(.text-slate-500,.text-slate-600) { color: #b6c2d4; }
+    html[data-fc-mode="dark"] :is([class~="hover:bg-slate-100"]:hover,[class~="hover:bg-slate-50"]:hover,.task-action-btn:hover,.archive-action-btn:hover,.organization-clear-btn:hover) { background-color: #334155; color: #f1f5f9; }
+    html[data-fc-mode="dark"] [class~="hover:text-slate-900"]:hover { color: #fff; }
+    html[data-fc-mode="dark"] :is(.bg-indigo-100,.archive-count-badge) { background: #312e81; color: #c7d2fe; }
+    html[data-fc-mode="dark"] :is(.bg-green-100,.priority-low,.alert-success) { background: #14532d; color: #bbf7d0; border-color: #166534; }
+    html[data-fc-mode="dark"] :is(.bg-amber-100,.priority-medium) { background: #78350f; color: #fde68a; }
+    html[data-fc-mode="dark"] :is(.bg-red-50,.priority-high,.alert-error,[class~="hover:bg-red-50"]:hover) { background: #7f1d1d; color: #fecaca; border-color: #991b1b; }
+    html[data-fc-mode="dark"] :is(.text-red-600,.text-red-700) { color: #fca5a5; }
+    html[data-fc-mode="dark"] :is(.text-green-600,.text-green-700) { color: #86efac; }
+    html[data-fc-mode="dark"] :is(.text-amber-500,.text-amber-600) { color: #fcd34d; }
+    html[data-fc-mode="dark"] .text-indigo-600 { color: #c7d2fe; }
+    html[data-fc-mode="dark"] .theme-text { color: color-mix(in srgb, var(--primary-color) 55%, white); }
+    #fc-mode-toggle { flex-shrink: 0; }
+    @media(max-width: 640px) { #nav-bar > div { height: auto; min-height: 4rem; flex-wrap: wrap; gap: .25rem; padding-block: .5rem; } }
   </style>
+  <script>
+    try { if (localStorage.getItem('fc-color-mode') === 'dark') document.documentElement.dataset.fcMode = 'dark'; } catch (_) {}
+  </script>
 </head>
 
 <body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col antialiased">
@@ -423,6 +455,7 @@
           <span id="user-display-name" class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">User</span>
         </div>
 
+        <button type="button" id="fc-mode-toggle" class="task-action-btn" aria-label="Dark mode" aria-pressed="false" title="Toggle dark mode">🌙</button>
         <button type="button" id="sign-out-btn" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Sign Out">
           <i data-lucide="log-out" class="w-5 h-5"></i>
         </button>
